@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir)",
+      "Bash(powershell -Command \"Get-ChildItem -Force | ForEach-Object { $_Name }\")",
+      "Bash(npm create:*)",
+      "Bash(npm install)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 5 npm run dev:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run test:run:*)",
+      "Bash(npm test:*)",
+      "Bash(timeout:*)",
+      "Bash(findstr:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_click",
+      "Bash(ls -la \"C:\\\\Users\\\\nbfic\\\\Learning Claude\\\\Agent-Blueprint-Builder\\\\src\\\\components\\\\dialogs\"\" 2>&1 || echo \"Directory check \")",
+      "Bash(ls -la \"C:\\\\Users\\\\nbfic\\\\Learning Claude\\\\Agent-Blueprint-Builder\\\\src\\\\components\\\\shared\"\" 2>&1 || echo \"Directory check \")",
+      "Bash(npx tsc:*)"
+    ]
+  }
+}
