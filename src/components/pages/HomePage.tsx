@@ -1,13 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Plus, Boxes, Users, Target, Award } from 'lucide-react';
+import { Search, Plus, Boxes, Users, Target, Award, BookOpen } from 'lucide-react';
 import { useBlueprintsLibraryStore, type BlueprintSummary } from '../../store/blueprintsLibraryStore';
 import { BlueprintCard } from './BlueprintCard';
+import { BestPracticesDialog } from '../dialogs/BestPracticesDialog';
 import { v4 as uuidv4 } from 'uuid';
 
 export function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showBestPractices, setShowBestPractices] = useState(false);
   const getBlueprintSummaries = useBlueprintsLibraryStore((state) => state.getBlueprintSummaries);
   const addBlueprint = useBlueprintsLibraryStore((state) => state.addBlueprint);
 
@@ -127,6 +129,13 @@ export function HomePage() {
             />
           </div>
           <button
+            onClick={() => setShowBestPractices(true)}
+            className="flex items-center gap-2 px-4 py-2.5 border border-slate-300 hover:bg-slate-50 text-slate-700 font-medium rounded-lg transition-colors"
+          >
+            <BookOpen className="w-5 h-5" />
+            Best Practices
+          </button>
+          <button
             onClick={handleCreateNew}
             className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors shadow-sm"
           >
@@ -182,6 +191,11 @@ export function HomePage() {
           </p>
         )}
       </main>
+
+      <BestPracticesDialog
+        isOpen={showBestPractices}
+        onClose={() => setShowBestPractices(false)}
+      />
     </div>
   );
 }

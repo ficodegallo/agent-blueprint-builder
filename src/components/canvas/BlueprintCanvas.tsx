@@ -66,6 +66,26 @@ export function BlueprintCanvas() {
     [screenToFlowPosition, addNode, selectNode]
   );
 
+  // Focus on a specific node when requested from validation panel
+  const focusNodeId = useUIStore((state) => state.focusNodeId);
+
+  useEffect(() => {
+    if (!focusNodeId) return;
+
+    const targetNode = nodes.find((node) => node.id === focusNodeId);
+    if (targetNode) {
+      const zoom = getZoom();
+      setCenter(
+        targetNode.position.x + 150,
+        targetNode.position.y + 75,
+        { zoom, duration: 800 }
+      );
+    }
+
+    // Clear focusNodeId after centering so it can be triggered again for the same node
+    useUIStore.setState({ focusNodeId: null });
+  }, [focusNodeId, nodes, setCenter, getZoom]);
+
   // Auto-center on first trigger node when blueprint loads
   useEffect(() => {
     // Only run once when nodes are first loaded

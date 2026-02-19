@@ -39,7 +39,7 @@ src/
 │   └── templates.ts     # 20 node templates with detailed integrations
 ├── features/
 │   └── smartImport/     # AI-powered blueprint generation from documents
-├── hooks/               # useLocalStorage, useAutoSave, useExport, useImport, useValidation, useTaskAutoOrder
+├── hooks/               # useLocalStorage, useAutoSave, useExport, useImport, useValidation, useTaskAutoOrder, useGoalEvaluate
 ├── store/               # Zustand stores (nodesStore, edgesStore, blueprintStore, uiStore, commentsStore, blueprintsLibraryStore)
 ├── types/               # TypeScript definitions (includes integration types)
 └── utils/               # validation.ts, export.ts, import.ts, canvasExport.ts
@@ -59,6 +59,7 @@ src/
 - `src/components/shared/IOListEditor.tsx` - List editor with required/optional toggle
 - `src/features/smartImport/` - AI-powered blueprint generation from PDF/Word/text documents
 - `src/hooks/useTaskAutoOrder.ts` - AI-powered task reordering using Claude Opus 4.5
+- `src/hooks/useGoalEvaluate.ts` - AI-powered goal evaluation and optimization
 - `src/utils/validation.ts` - Blueprint validation rules
 - `src/utils/export.ts` - JSON, Excel, and PDF export with Integration Details sheet
 - `src/utils/canvasExport.ts` - Canvas diagram capture for PDF export
@@ -87,7 +88,7 @@ All nodes have handles on 4 sides:
 Work nodes (Agent, Automation, Human) include:
 - **Name**: Display name
 - **Worker Type**: Agent, Automation, or Human
-- **Goal**: What the node should achieve
+- **Goal**: What the node should achieve, with AI-powered "Evaluate" button for goal optimization
 - **Inputs**: List with required/optional toggle
 - **Tasks**: Multi-line task list with:
   - **Manual Drag-and-Drop**: Reorder tasks by dragging grip handles
@@ -197,6 +198,46 @@ Intelligently reorder task lists within work nodes using Claude Opus 4.5 to dete
 - **Error Handling**: Displays error messages for API failures, auth issues, or timeouts
 - **Validation**: Ensures returned task count matches original (no tasks added/removed)
 - **Hook**: `useTaskAutoOrder()` provides `autoOrderTasks()`, `isOrdering`, `error`, and `clearError()`
+
+## Goal Evaluate (AI-Powered Goal Optimization)
+
+### Overview
+Evaluates work node goals and suggests improved, outcome-focused versions using Claude API. Helps users write stronger goals that focus on outcomes rather than activities.
+
+### How It Works
+1. **Trigger**: Click "Evaluate" button next to Goal label (appears when goal field has content)
+2. **Context Analysis**: Sends to Claude API:
+   - Node name and current goal
+   - Tasks, inputs, and outputs for context
+3. **AI Processing**: Claude evaluates the goal against best practices:
+   - Outcome focus (not task-centric)
+   - Specificity and measurability
+   - Business value and impact
+4. **Result**: Returns rating, improved suggestion, and reasoning
+
+### Rating System
+- **Strong** (green badge): Clear outcome focus, specific, measurable — little or no improvement needed
+- **Moderate** (amber badge): Has some outcome language but could be more specific
+- **Weak** (red badge): Task-centric, vague, or missing outcome focus
+
+### UI Flow
+1. Enter a goal in a work node's Goal field
+2. Click **"Evaluate"** button (purple with Sparkles icon)
+3. Suggestion panel appears below the goal textarea with:
+   - Color-coded rating badge (strong/moderate/weak)
+   - Brief reasoning explaining the evaluation
+   - Read-only suggested goal text
+   - **"Apply"** button to accept the improved goal
+   - **"Dismiss"** button to clear the suggestion
+4. Editing the goal clears any existing suggestion
+
+### Technical Details
+- **API**: Uses Claude Opus 4.5 (`claude-opus-4-5-20251101`) via Anthropic API
+- **Timeout**: 60 seconds for API call
+- **Token Limit**: 4000 max tokens
+- **Error Handling**: Displays error messages for API failures, auth issues, or timeouts; links to API key config
+- **Validation**: Ensures response contains valid rating, suggestion, and reasoning
+- **Hook**: `useGoalEvaluate()` provides `evaluateGoal()`, `isEvaluating`, `suggestedGoal`, `error`, `clearError()`, and `clearSuggestion()`
 
 ## Smart Import (AI-Powered Blueprint Generation)
 
@@ -412,6 +453,17 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 - **Task Management**: ListEditor uses @hello-pangea/dnd for drag-and-drop, useTaskAutoOrder hook for AI reordering
 
 ## Recent Updates
+
+### Goal Evaluate Feature (AI-Powered Goal Optimization)
+- **AI-Powered Goal Evaluation**:
+  - "Evaluate" button appears next to Goal label when goal has content
+  - Uses Claude Opus 4.5 to analyze goal quality and suggest outcome-focused improvements
+  - Returns rating (strong/moderate/weak), improved suggestion, and reasoning
+- **Inline Suggestion UI**:
+  - Color-coded rating badge (green=strong, amber=moderate, red=weak)
+  - Read-only suggested goal with "Apply" and "Dismiss" buttons
+  - Editing goal clears existing suggestion
+- **Files**: New `src/hooks/useGoalEvaluate.ts` hook, updated `DetailPanel.tsx`
 
 ### Enhanced Task Management & Decision Nodes
 - **AI-Powered Task Auto-Ordering**:

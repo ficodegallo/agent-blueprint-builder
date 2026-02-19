@@ -4,6 +4,7 @@ interface UIState {
   // Selection state
   selectedNodeId: string | null;
   selectedEdgeId: string | null;
+  focusNodeId: string | null;
 
   // Panel visibility
   isDetailPanelOpen: boolean;
@@ -17,6 +18,7 @@ interface UIState {
   // Actions
   selectNode: (id: string | null) => void;
   selectEdge: (id: string | null) => void;
+  focusNode: (id: string) => void;
   clearSelection: () => void;
 
   toggleDetailPanel: () => void;
@@ -37,6 +39,7 @@ export const useUIStore = create<UIState>((set) => ({
   // Initial state
   selectedNodeId: null,
   selectedEdgeId: null,
+  focusNodeId: null,
   isDetailPanelOpen: true,
   isTemplatePanelOpen: true,
   isValidationPanelOpen: false,
@@ -55,6 +58,14 @@ export const useUIStore = create<UIState>((set) => ({
     set({
       selectedNodeId: null,
       selectedEdgeId: id,
+    }),
+
+  focusNode: (id) =>
+    set({
+      selectedNodeId: id,
+      selectedEdgeId: null,
+      isDetailPanelOpen: true,
+      focusNodeId: id,
     }),
 
   clearSelection: () =>

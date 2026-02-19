@@ -27,14 +27,14 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
     const dialog = dialogRef.current;
     if (!dialog) return;
 
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
+    // Prevent native dialog cancel so React controls the state
+    const handleCancel = (e: Event) => {
+      e.preventDefault();
+      onClose();
     };
 
-    dialog.addEventListener('keydown', handleEscape);
-    return () => dialog.removeEventListener('keydown', handleEscape);
+    dialog.addEventListener('cancel', handleCancel);
+    return () => dialog.removeEventListener('cancel', handleCancel);
   }, [onClose]);
 
   const widthClasses = {
@@ -59,7 +59,7 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
         }
       }}
     >
-      <div className="bg-white rounded-lg overflow-hidden">
+      <div className="bg-white rounded-lg overflow-y-auto max-h-[90vh]">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
           <h2 className="text-lg font-semibold text-gray-900">{title}</h2>

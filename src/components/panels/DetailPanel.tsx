@@ -8,6 +8,7 @@ import { ListEditor } from '../shared/ListEditor';
 import { IOListEditor } from '../shared/IOListEditor';
 import { IntegrationDetailsDialog } from './IntegrationDetailsDialog';
 import { useTaskAutoOrder } from '../../hooks/useTaskAutoOrder';
+import { useGoalEvaluate } from '../../hooks/useGoalEvaluate';
 import { migrateIntegrations, type IntegrationDetail } from '../../types';
 
 export function DetailPanel() {
@@ -28,6 +29,16 @@ export function DetailPanel() {
 
   // Auto-order hook for tasks
   const { autoOrderTasks, isOrdering, error: autoOrderError, clearError } = useTaskAutoOrder();
+
+  // Goal evaluate hook
+  const {
+    evaluateGoal,
+    isEvaluating,
+    suggestedGoal,
+    error: goalEvalError,
+    clearError: clearGoalEvalError,
+    clearSuggestion,
+  } = useGoalEvaluate();
 
   // Get saved blueprints for workflow linking
   const savedBlueprints = getBlueprintSummaries();
@@ -63,6 +74,19 @@ export function DetailPanel() {
     } else {
       console.log('No reordered tasks returned');
     }
+  };
+
+  // Handle goal evaluation
+  const handleEvaluateGoal = async () => {
+    if (!selectedNode || selectedNode.data.nodeType !== 'work') return;
+    const data = selectedNode.data;
+    await evaluateGoal({
+      nodeName: data.name,
+      goal: data.goal,
+      tasks: data.tasks,
+      inputs: data.inputs,
+      outputs: data.outputs,
+    });
   };
 
   if (!selectedNode) {
@@ -146,14 +170,106 @@ export function DetailPanel() {
             </select>
           </div>
           <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Goal</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-sm font-medium text-gray-700">Goal</label>
+              {data.goal.trim() && (
+                <button
+                  onClick={handleEvaluateGoal}
+                  disabled={isEvaluating}
+                  className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Evaluate goal with AI"
+                >
+                  <Sparkles size={12} />
+                  {isEvaluating ? 'Evaluating...' : 'Evaluate'}
+                </button>
+              )}
+            </div>
             <textarea
               value={data.goal}
-              onChange={(e) => updateNode(selectedNode.id, { goal: e.target.value })}
+              onChange={(e) => {
+                updateNode(selectedNode.id, { goal: e.target.value });
+                clearSuggestion();
+                clearGoalEvalError();
+              }}
               rows={2}
               placeholder="What outcome should this node achieve?"
               className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
+
+            {/* Goal evaluation error */}
+            {goalEvalError && (
+              <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-800">{goalEvalError}</p>
+                {goalEvalError.includes('API key') && (
+                  <button
+                    onClick={() => {
+                      clearGoalEvalError();
+                      openDialog('smartImport');
+                    }}
+                    className="mt-2 text-xs text-red-600 hover:text-red-700 underline"
+                  >
+                    Configure API Key
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Goal evaluation suggestion */}
+            {suggestedGoal && (
+              <div className="mt-2 p-3 bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg">
+                {/* Rating badge */}
+                <div className="flex items-center gap-2 mb-2">
+                  {suggestedGoal.rating === 'strong' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      <CheckCircle className="w-3 h-3" />
+                      Strong
+                    </span>
+                  )}
+                  {suggestedGoal.rating === 'moderate' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                      <AlertTriangle className="w-3 h-3" />
+                      Moderate
+                    </span>
+                  )}
+                  {suggestedGoal.rating === 'weak' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      <AlertCircle className="w-3 h-3" />
+                      Weak
+                    </span>
+                  )}
+                </div>
+
+                {/* Reasoning */}
+                <p className="text-xs text-gray-600 mb-2">{suggestedGoal.reasoning}</p>
+
+                {/* Suggested goal */}
+                <div className="mb-2">
+                  <label className="block text-xs font-medium text-purple-700 mb-1">Suggested Goal</label>
+                  <div className="w-full px-3 py-2 bg-white border border-purple-200 rounded-md text-sm text-gray-800">
+                    {suggestedGoal.suggestion}
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      updateNode(selectedNode.id, { goal: suggestedGoal.suggestion });
+                      clearSuggestion();
+                    }}
+                    className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors"
+                  >
+                    Apply
+                  </button>
+                  <button
+                    onClick={clearSuggestion}
+                    className="flex-1 px-3 py-1.5 text-xs font-medium text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                  >
+                    Dismiss
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Inputs, Tasks, Outputs */}
