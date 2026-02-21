@@ -12,11 +12,39 @@ export interface IOItem {
   required: boolean;
 }
 
+// API parameter for discovered endpoints
+export interface ApiParameter {
+  name: string;
+  type: string;            // "string", "integer", "boolean", etc.
+  location: 'path' | 'query' | 'header' | 'body';
+  required: boolean;
+  description: string;
+}
+
+// API response field for discovered endpoints
+export interface ApiResponseField {
+  name: string;
+  type: string;
+  json_path: string;       // e.g., "$.data.employee.firstName"
+  description: string;
+}
+
 // API Endpoint definition for integrations
 export interface ApiEndpoint {
   id: string; // UUID for identification
   url: string; // Endpoint URL (e.g., "https://api.workday.com/v1/employees")
   method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+  // Rich fields (optional, for discovered endpoints)
+  name?: string;
+  description?: string;
+  auth_type?: string;
+  rate_limit?: string;
+  parameters?: ApiParameter[];
+  response_fields?: ApiResponseField[];
+  documentation_url?: string;
+  source?: 'discovered' | 'manual';
+  ai_confidence?: 'high' | 'medium' | 'low';
+  ai_notes?: string;
 }
 
 // Integration Input/Output mapping
@@ -237,6 +265,7 @@ export function createApiEndpoint(partial?: Partial<ApiEndpoint>): ApiEndpoint {
     id: '',
     url: '',
     method: 'GET',
+    source: 'manual',
     ...partial,
   };
 }

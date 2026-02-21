@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, X, Globe, Database, ArrowRight, ChevronDown } from 'lucide-react';
+import { Plus, X, Globe, Database, ArrowRight, ChevronDown, Sparkles, CheckCircle, AlertTriangle, AlertCircle, ExternalLink } from 'lucide-react';
 import { v4 as uuidv4 } from 'uuid';
 import { Modal } from '../shared/Modal';
 import type {
@@ -503,38 +503,150 @@ export function IntegrationDetailsDialog({
           ) : (
             <div className="space-y-3 border border-gray-200 rounded-lg p-4 bg-gray-50">
               {formData.apiEndpoints.map((endpoint) => (
-                <div key={endpoint.id} className="flex items-start gap-2">
-                  <div className="flex-1 grid grid-cols-4 gap-2">
-                    <div className="col-span-3">
-                      <input
-                        type="text"
-                        value={endpoint.url}
-                        onChange={(e) => updateApiEndpoint(endpoint.id, 'url', e.target.value)}
-                        placeholder="https://api.example.com/endpoint"
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      />
+                <div key={endpoint.id} className="border border-gray-200 rounded-lg bg-white overflow-hidden">
+                  {/* Endpoint header with URL + method (editable for manual, display for discovered) */}
+                  <div className="flex items-start gap-2 p-3">
+                    <div className="flex-1">
+                      {/* Source badge for discovered endpoints */}
+                      {endpoint.source === 'discovered' && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                            <Sparkles className="w-3 h-3" />
+                            AI Discovered
+                          </span>
+                          {endpoint.ai_confidence && (
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                              endpoint.ai_confidence === 'high' ? 'bg-green-100 text-green-700' :
+                              endpoint.ai_confidence === 'medium' ? 'bg-amber-100 text-amber-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              {endpoint.ai_confidence === 'high' && <CheckCircle className="w-3 h-3" />}
+                              {endpoint.ai_confidence === 'medium' && <AlertTriangle className="w-3 h-3" />}
+                              {endpoint.ai_confidence === 'low' && <AlertCircle className="w-3 h-3" />}
+                              {endpoint.ai_confidence.charAt(0).toUpperCase() + endpoint.ai_confidence.slice(1)}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Endpoint name (discovered only) */}
+                      {endpoint.name && (
+                        <div className="text-sm font-medium text-gray-900 mb-1">{endpoint.name}</div>
+                      )}
+
+                      {/* URL + Method */}
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="col-span-3">
+                          <input
+                            type="text"
+                            value={endpoint.url}
+                            onChange={(e) => updateApiEndpoint(endpoint.id, 'url', e.target.value)}
+                            placeholder="https://api.example.com/endpoint"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          />
+                        </div>
+                        <div>
+                          <select
+                            value={endpoint.method}
+                            onChange={(e) => updateApiEndpoint(endpoint.id, 'method', e.target.value)}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                          >
+                            <option value="GET">GET</option>
+                            <option value="POST">POST</option>
+                            <option value="PUT">PUT</option>
+                            <option value="DELETE">DELETE</option>
+                            <option value="PATCH">PATCH</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      {/* Description (discovered only) */}
+                      {endpoint.description && (
+                        <p className="text-xs text-gray-500 mt-1.5">{endpoint.description}</p>
+                      )}
                     </div>
-                    <div>
-                      <select
-                        value={endpoint.method}
-                        onChange={(e) => updateApiEndpoint(endpoint.id, 'method', e.target.value)}
-                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="GET">GET</option>
-                        <option value="POST">POST</option>
-                        <option value="PUT">PUT</option>
-                        <option value="DELETE">DELETE</option>
-                        <option value="PATCH">PATCH</option>
-                      </select>
-                    </div>
+                    <button
+                      onClick={() => removeApiEndpoint(endpoint.id)}
+                      className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                      title="Remove endpoint"
+                    >
+                      <X size={16} />
+                    </button>
                   </div>
-                  <button
-                    onClick={() => removeApiEndpoint(endpoint.id)}
-                    className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
-                    title="Remove endpoint"
-                  >
-                    <X size={16} />
-                  </button>
+
+                  {/* Rich details for discovered endpoints */}
+                  {endpoint.source === 'discovered' && (
+                    <div className="px-3 pb-3 space-y-2 border-t border-gray-100 pt-2">
+                      {/* Auth & Rate limit */}
+                      {(endpoint.auth_type || endpoint.rate_limit) && (
+                        <div className="grid grid-cols-2 gap-2">
+                          {endpoint.auth_type && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-500">Auth:</span>{' '}
+                              <span className="text-gray-700">{endpoint.auth_type}</span>
+                            </div>
+                          )}
+                          {endpoint.rate_limit && (
+                            <div className="text-xs">
+                              <span className="font-medium text-gray-500">Rate Limit:</span>{' '}
+                              <span className="text-gray-700">{endpoint.rate_limit}</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Parameters */}
+                      {endpoint.parameters && endpoint.parameters.length > 0 && (
+                        <div>
+                          <span className="text-xs font-medium text-gray-500">Parameters:</span>
+                          <div className="mt-1 space-y-0.5">
+                            {endpoint.parameters.map((param, i) => (
+                              <div key={i} className="text-xs text-gray-600 flex gap-1">
+                                <span className="font-mono text-gray-800">{param.name}</span>
+                                <span className="text-gray-400">({param.type}, {param.location})</span>
+                                {param.required && <span className="text-red-500">*</span>}
+                                {param.description && <span className="text-gray-500">— {param.description}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Response fields */}
+                      {endpoint.response_fields && endpoint.response_fields.length > 0 && (
+                        <div>
+                          <span className="text-xs font-medium text-gray-500">Response Fields:</span>
+                          <div className="mt-1 space-y-0.5">
+                            {endpoint.response_fields.map((field, i) => (
+                              <div key={i} className="text-xs text-gray-600 flex gap-1">
+                                <span className="font-mono text-gray-800">{field.name}</span>
+                                <span className="text-gray-400">({field.type})</span>
+                                {field.json_path && <span className="font-mono text-gray-400 text-[10px]">{field.json_path}</span>}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* AI notes */}
+                      {endpoint.ai_notes && (
+                        <p className="text-xs text-gray-500 italic">{endpoint.ai_notes}</p>
+                      )}
+
+                      {/* Documentation link */}
+                      {endpoint.documentation_url && (
+                        <a
+                          href={endpoint.documentation_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          <ExternalLink size={12} />
+                          Documentation
+                        </a>
+                      )}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

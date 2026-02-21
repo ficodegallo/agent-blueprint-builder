@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, Sparkles, AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Plus } from 'lucide-react';
+import { X, Sparkles, AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Plus, Search } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useNodesStore, useUIStore } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
@@ -7,9 +7,10 @@ import { NodeComments } from './NodeComments';
 import { ListEditor } from '../shared/ListEditor';
 import { IOListEditor } from '../shared/IOListEditor';
 import { IntegrationDetailsDialog } from './IntegrationDetailsDialog';
+import { ApiDiscoveryDialog } from '../dialogs/ApiDiscoveryDialog';
 import { useTaskAutoOrder } from '../../hooks/useTaskAutoOrder';
 import { useGoalEvaluate } from '../../hooks/useGoalEvaluate';
-import { migrateIntegrations, type IntegrationDetail } from '../../types';
+import { migrateIntegrations, type IntegrationDetail, type ApiEndpoint } from '../../types';
 
 export function DetailPanel() {
   const selectedNodeId = useUIStore((state) => state.selectedNodeId);
@@ -26,6 +27,10 @@ export function DetailPanel() {
     index: number;
   } | null>(null);
   const [isIntegrationDialogOpen, setIsIntegrationDialogOpen] = useState(false);
+
+  // State for API discovery dialog
+  const [isApiDiscoveryOpen, setIsApiDiscoveryOpen] = useState(false);
+  const [discoveryIntegrationIndex, setDiscoveryIntegrationIndex] = useState<number | null>(null);
 
   // Auto-order hook for tasks
   const { autoOrderTasks, isOrdering, error: autoOrderError, clearError } = useTaskAutoOrder();
@@ -336,6 +341,17 @@ export function DetailPanel() {
                       )}
                     </div>
                     <div className="flex items-center gap-1.5 ml-2">
+                      <button
+                        onClick={() => {
+                          setDiscoveryIntegrationIndex(index);
+                          setIsApiDiscoveryOpen(true);
+                        }}
+                        className="px-2.5 py-1.5 text-xs font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors flex items-center gap-1"
+                        title="Discover API endpoints with AI"
+                      >
+                        <Search size={12} />
+                        Discover
+                      </button>
                       <button
                         onClick={() => {
                           setEditingIntegration({ integration, index });
@@ -696,6 +712,36 @@ export function DetailPanel() {
             updated[editingIntegration.index] = updatedIntegration;
             updateNode(selectedNode.id, { integrations: updated });
             setEditingIntegration(null);
+          }}
+        />
+      )}
+
+      {/* API Discovery Dialog */}
+      {data.nodeType === 'work' && discoveryIntegrationIndex !== null && (
+        <ApiDiscoveryDialog
+          isOpen={isApiDiscoveryOpen}
+          onClose={() => {
+            setIsApiDiscoveryOpen(false);
+            setDiscoveryIntegrationIndex(null);
+          }}
+          integrationName={migrateIntegrations(data.integrations)[discoveryIntegrationIndex]?.name || ''}
+          nodeName={data.name}
+          goal={data.goal}
+          tasks={data.tasks}
+          inputs={data.inputs}
+          outputs={data.outputs}
+          onAddEndpoint={(endpoint: ApiEndpoint) => {
+            const migrated = migrateIntegrations(data.integrations);
+            const integration = migrated[discoveryIntegrationIndex];
+            if (integration) {
+              const updatedIntegration = {
+                ...integration,
+                apiEndpoints: [...integration.apiEndpoints, endpoint],
+              };
+              const updated = [...migrated];
+              updated[discoveryIntegrationIndex] = updatedIntegration;
+              updateNode(selectedNode.id, { integrations: updated });
+            }
           }}
         />
       )}

@@ -39,7 +39,7 @@ src/
 │   └── templates.ts     # 20 node templates with detailed integrations
 ├── features/
 │   └── smartImport/     # AI-powered blueprint generation from documents
-├── hooks/               # useLocalStorage, useAutoSave, useExport, useImport, useValidation, useTaskAutoOrder, useGoalEvaluate
+├── hooks/               # useLocalStorage, useAutoSave, useExport, useImport, useValidation, useTaskAutoOrder, useGoalEvaluate, useApiDiscovery
 ├── store/               # Zustand stores (nodesStore, edgesStore, blueprintStore, uiStore, commentsStore, blueprintsLibraryStore)
 ├── types/               # TypeScript definitions (includes integration types)
 └── utils/               # validation.ts, export.ts, import.ts, canvasExport.ts
@@ -60,6 +60,8 @@ src/
 - `src/features/smartImport/` - AI-powered blueprint generation from PDF/Word/text documents
 - `src/hooks/useTaskAutoOrder.ts` - AI-powered task reordering using Claude Opus 4.5
 - `src/hooks/useGoalEvaluate.ts` - AI-powered goal evaluation and optimization
+- `src/hooks/useApiDiscovery.ts` - AI-powered API endpoint discovery for integrations
+- `src/components/dialogs/ApiDiscoveryDialog.tsx` - API discovery results modal with endpoint cards
 - `src/utils/validation.ts` - Blueprint validation rules
 - `src/utils/export.ts` - JSON, Excel, and PDF export with Integration Details sheet
 - `src/utils/canvasExport.ts` - Canvas diagram capture for PDF export
@@ -453,6 +455,27 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 - **Task Management**: ListEditor uses @hello-pangea/dnd for drag-and-drop, useTaskAutoOrder hook for AI reordering
 
 ## Recent Updates
+
+### Integration API Discovery (AI-Powered Endpoint Suggestions)
+- **AI-Powered API Discovery**:
+  - "Discover" button on each integration row in DetailPanel
+  - Uses Claude Opus 4.5 to suggest 2-5 relevant API endpoints based on integration name and node context
+  - Returns endpoints with rich metadata: parameters, response fields, auth type, rate limits, documentation URLs
+  - Confidence ratings (high/medium/low) for each suggested endpoint
+- **Discovery Dialog UI**:
+  - Context summary card showing integration name, node, goal, I/O counts
+  - Loading, error, empty, and all-handled states
+  - Expandable endpoint cards with method badges, parameters tables, response field tables
+  - "Add to Node" and "Dismiss" buttons per endpoint; "Search Again" to re-trigger
+- **Rich Endpoint Display in IntegrationDetailsDialog**:
+  - Discovered endpoints show "AI Discovered" badge, confidence badge, name, description
+  - Inline display of auth type, rate limit, parameters, response fields, AI notes, documentation link
+  - Manual endpoints unchanged (backward compatible)
+- **Extended Type System**:
+  - New `ApiParameter` and `ApiResponseField` interfaces
+  - `ApiEndpoint` extended with optional rich fields (name, description, auth_type, rate_limit, parameters, response_fields, documentation_url, source, ai_confidence, ai_notes)
+  - `createApiEndpoint` defaults `source: 'manual'`
+- **Files**: New `src/hooks/useApiDiscovery.ts`, new `src/components/dialogs/ApiDiscoveryDialog.tsx`, updated `src/types/nodes.ts`, `DetailPanel.tsx`, `IntegrationDetailsDialog.tsx`
 
 ### Goal Evaluate Feature (AI-Powered Goal Optimization)
 - **AI-Powered Goal Evaluation**:
