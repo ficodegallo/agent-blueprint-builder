@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { getApiKey } from '../features/smartImport/hooks/useClaudeApi';
+import { getActivePrompts } from '../utils/aiPromptStorage';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-opus-4-5-20251101';
@@ -32,28 +33,18 @@ export function useTaskAutoOrder() {
     setIsOrdering(true);
     setError(null);
 
-    const systemPrompt = `You are an expert workflow designer. Your job is to reorder a list of tasks so they execute in the most logical and efficient sequence to achieve a specific goal.
+    const prompts = getActivePrompts('taskAutoOrder');
+    const systemPrompt = prompts.systemPrompt;
 
-Rules:
-1. Consider dependencies between tasks (e.g., data must be retrieved before it can be processed)
-2. Order tasks from first to last execution
-3. Consider the inputs available at the start and the outputs that need to be produced
-4. Return ONLY a JSON array of the reordered task strings, nothing else
-5. Do not add, remove, or modify the task descriptions - only reorder them
-6. The JSON array should contain the exact same tasks, just in a different order`;
+    const formattedInputs = params.inputs.map((input) => `- ${input.name}${input.required ? ' (required)' : ''}`).join('\n');
+    const formattedOutputs = params.outputs.map((output) => `- ${output.name}${output.required ? ' (required)' : ''}`).join('\n');
+    const formattedTasks = params.tasks.map((task, i) => `${i + 1}. ${task}`).join('\n');
 
-    const userPrompt = `Goal: ${params.goal}
-
-Available Inputs:
-${params.inputs.map((input) => `- ${input.name}${input.required ? ' (required)' : ''}`).join('\n')}
-
-Required Outputs:
-${params.outputs.map((output) => `- ${output.name}${output.required ? ' (required)' : ''}`).join('\n')}
-
-Current Task List (unordered):
-${params.tasks.map((task, i) => `${i + 1}. ${task}`).join('\n')}
-
-Please reorder these tasks into the optimal execution sequence to transform the inputs into the outputs while achieving the goal. Return ONLY a JSON array of the reordered tasks.`;
+    const userPrompt = prompts.userPromptTemplate
+      .replace('{{GOAL}}', params.goal)
+      .replace('{{INPUTS}}', formattedInputs)
+      .replace('{{OUTPUTS}}', formattedOutputs)
+      .replace('{{TASKS}}', formattedTasks);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);

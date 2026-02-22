@@ -62,6 +62,8 @@ src/
 - `src/hooks/useGoalEvaluate.ts` - AI-powered goal evaluation and optimization
 - `src/hooks/useApiDiscovery.ts` - AI-powered API endpoint discovery for integrations
 - `src/components/dialogs/ApiDiscoveryDialog.tsx` - API discovery results modal with endpoint cards
+- `src/utils/aiPromptStorage.ts` - Centralized AI prompt storage for all 5 AI features
+- `src/components/dialogs/AIPromptAdminDialog.tsx` - Tabbed admin dialog for viewing/editing all AI prompts
 - `src/utils/validation.ts` - Blueprint validation rules
 - `src/utils/export.ts` - JSON, Excel, and PDF export with Integration Details sheet
 - `src/utils/canvasExport.ts` - Canvas diagram capture for PDF export
@@ -455,6 +457,23 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 - **Task Management**: ListEditor uses @hello-pangea/dnd for drag-and-drop, useTaskAutoOrder hook for AI reordering
 
 ## Recent Updates
+
+### AI Prompt Admin (Centralized Prompt Management)
+- **Centralized Prompt Storage** (`src/utils/aiPromptStorage.ts`):
+  - Manages system and user prompts for all 5 AI features: Smart Import, Goal Evaluate, Task Auto-Order, API Discovery, Best Practices Analysis
+  - Default prompts extracted from hooks; custom overrides stored in localStorage (`blueprint-builder:ai-prompts:{feature}`)
+  - Functions: `getActivePrompts()`, `saveCustomPrompts()`, `resetFeaturePrompts()`, `isFeatureCustomized()`, `getFeatureConfigs()`
+  - One-time migration from old `blueprint-builder:smart-import-prompts` key
+- **AI Prompt Admin Dialog** (`src/components/dialogs/AIPromptAdminDialog.tsx`):
+  - Tabbed interface with left sidebar listing all 5 features (icons + customization dot indicator)
+  - System Prompt and User Prompt Template textareas per feature
+  - Available Placeholders reference table (token + description)
+  - "Reset to Default" with confirmation per feature
+  - "Save Changes" / "Cancel" footer with unsaved changes warning
+- **HomePage Integration**: "AI Prompts" button with Settings icon in search/actions bar
+- **Hook Refactoring**: All 4 hooks (`useGoalEvaluate`, `useTaskAutoOrder`, `useApiDiscovery`, `useBestPracticesAnalysis`) now read prompts from centralized storage via `getActivePrompts(featureKey)` and use `{{PLACEHOLDER}}` template substitution
+- **Smart Import Migration**: `promptStorage.ts` delegates to centralized storage; old localStorage key auto-migrated
+- **Files**: New `src/utils/aiPromptStorage.ts`, new `src/components/dialogs/AIPromptAdminDialog.tsx`, updated `src/store/uiStore.ts`, `HomePage.tsx`, all 4 AI hooks, `src/features/smartImport/utils/promptStorage.ts`
 
 ### Integration API Discovery (AI-Powered Endpoint Suggestions)
 - **AI-Powered API Discovery**:

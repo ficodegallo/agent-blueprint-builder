@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { getApiKey } from '../features/smartImport/hooks/useClaudeApi';
 import { getBestPracticesText } from '../utils/bestPracticesStorage';
+import { getActivePrompts } from '../utils/aiPromptStorage';
 import type { AppNode } from '../store/nodesStore';
 import type { BlueprintEdge } from '../types';
 import type { ValidationIssue } from '../utils/validation';
@@ -83,25 +84,12 @@ export function useBestPracticesAnalysis() {
 
     const blueprintText = serializeBlueprintForAnalysis(nodes, edges);
 
-    const systemPrompt = `You are an expert workflow analyst. You will be given a blueprint description and a set of best practices. Analyze the blueprint for violations of these best practices.
+    const prompts = getActivePrompts('bestPracticesAnalysis');
+    const systemPrompt = prompts.systemPrompt;
 
-Return ONLY a JSON array of violations found. Each violation should be an object with:
-- "code": a string like "BP001", "BP002", etc. (sequential)
-- "message": a clear description of the violation and which best practice it violates
-- "nodeId": the node ID involved (string), or null if it's a blueprint-level issue
-- "nodeName": the node name involved (string), or null if it's a blueprint-level issue
-
-If no violations are found, return an empty array: []
-
-Return ONLY the JSON array, no other text.`;
-
-    const userPrompt = `## Best Practices
-${bestPracticesText}
-
-## Blueprint
-${blueprintText}
-
-Analyze this blueprint against the best practices above and return a JSON array of violations.`;
+    const userPrompt = prompts.userPromptTemplate
+      .replace('{{BEST_PRACTICES_TEXT}}', bestPracticesText)
+      .replace('{{BLUEPRINT_TEXT}}', blueprintText);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);

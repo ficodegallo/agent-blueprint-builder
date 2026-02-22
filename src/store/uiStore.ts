@@ -13,7 +13,7 @@ interface UIState {
   isHeaderExpanded: boolean;
 
   // Dialogs
-  activeDialog: 'export' | 'import' | 'saveLoad' | 'newBlueprint' | 'smartImport' | 'apiKeySettings' | null;
+  activeDialog: 'export' | 'import' | 'saveLoad' | 'newBlueprint' | 'smartImport' | 'apiKeySettings' | 'aiPromptAdmin' | null;
 
   // Actions
   selectNode: (id: string | null) => void;

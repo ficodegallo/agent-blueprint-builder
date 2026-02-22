@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { getApiKey } from '../features/smartImport/hooks/useClaudeApi';
+import { getActivePrompts } from '../utils/aiPromptStorage';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const MODEL = 'claude-opus-4-5-20251101';
@@ -38,40 +39,19 @@ export function useGoalEvaluate() {
     setError(null);
     setSuggestedGoal(null);
 
-    const systemPrompt = `You are an expert business process designer who specializes in writing strong, outcome-focused goals for workflow nodes.
+    const prompts = getActivePrompts('goalEvaluate');
+    const systemPrompt = prompts.systemPrompt;
 
-Your job is to evaluate a goal statement and suggest an improved version if needed.
+    const formattedTasks = params.tasks.length > 0 ? params.tasks.join('; ') : 'None specified';
+    const formattedInputs = params.inputs.length > 0 ? params.inputs.map(i => `${i.name}${i.required ? ' (required)' : ''}`).join(', ') : 'None specified';
+    const formattedOutputs = params.outputs.length > 0 ? params.outputs.map(o => `${o.name}${o.required ? ' (required)' : ''}`).join(', ') : 'None specified';
 
-Rules for strong goals:
-1. Focus on OUTCOMES, not activities (e.g., "Ensure accurate employee data is updated in all downstream systems" not "Process the data")
-2. Be specific about what success looks like
-3. Include measurable or verifiable criteria when possible
-4. Reference the business value or impact
-5. Avoid vague verbs like "process", "handle", "manage" without specifics
-
-Rate the goal as:
-- "strong": Clear outcome focus, specific, measurable — little or no improvement needed
-- "moderate": Has some outcome language but could be more specific or impactful
-- "weak": Task-centric, vague, or missing outcome focus
-
-Return ONLY a JSON object with this exact structure:
-{
-  "rating": "strong" | "moderate" | "weak",
-  "suggestion": "The improved goal text",
-  "reasoning": "Brief explanation of what was improved and why (1-2 sentences)"
-}`;
-
-    const userPrompt = `Evaluate and improve this goal for a workflow node:
-
-Node Name: ${params.nodeName}
-Current Goal: ${params.goal}
-
-Context:
-- Tasks performed: ${params.tasks.length > 0 ? params.tasks.join('; ') : 'None specified'}
-- Inputs: ${params.inputs.length > 0 ? params.inputs.map(i => `${i.name}${i.required ? ' (required)' : ''}`).join(', ') : 'None specified'}
-- Outputs: ${params.outputs.length > 0 ? params.outputs.map(o => `${o.name}${o.required ? ' (required)' : ''}`).join(', ') : 'None specified'}
-
-Return ONLY the JSON object with rating, suggestion, and reasoning.`;
+    const userPrompt = prompts.userPromptTemplate
+      .replace('{{NODE_NAME}}', params.nodeName)
+      .replace('{{GOAL}}', params.goal)
+      .replace('{{TASKS}}', formattedTasks)
+      .replace('{{INPUTS}}', formattedInputs)
+      .replace('{{OUTPUTS}}', formattedOutputs);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);

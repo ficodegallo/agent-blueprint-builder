@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { getApiKey } from '../features/smartImport/hooks/useClaudeApi';
+import { getActivePrompts } from '../utils/aiPromptStorage';
 import type { ApiEndpoint, IOItem } from '../types';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
@@ -35,66 +36,20 @@ export function useApiDiscovery() {
     setError(null);
     setDiscoveredEndpoints([]);
 
-    const systemPrompt = `You are an API integration specialist with deep knowledge of popular enterprise and SaaS APIs.
+    const prompts = getActivePrompts('apiDiscovery');
+    const systemPrompt = prompts.systemPrompt;
 
-Your job is to suggest relevant API endpoints for a given integration based on the context of what the workflow node needs to accomplish.
+    const formattedTasks = params.tasks.length > 0 ? params.tasks.map((t, i) => `${i + 1}. ${t}`).join('\n') : 'None specified';
+    const formattedInputs = params.inputs.length > 0 ? params.inputs.map(i => `${i.name}${i.required ? ' (required)' : ''}`).join(', ') : 'None specified';
+    const formattedOutputs = params.outputs.length > 0 ? params.outputs.map(o => `${o.name}${o.required ? ' (required)' : ''}`).join(', ') : 'None specified';
 
-Rules:
-1. Suggest 2-5 relevant API endpoints based on your knowledge of the integration's API
-2. Only suggest endpoints you are confident exist (or closely match real API patterns)
-3. Use realistic URL patterns, parameter names, and response structures
-4. Include authentication type and rate limit info when known
-5. Use confidence levels:
-   - "high": You are certain this endpoint exists with these details
-   - "medium": You are fairly confident this endpoint exists but some details may vary
-   - "low": This endpoint likely exists but details are approximate
-6. If you don't have reliable knowledge of the integration's API, return an empty array []
-
-Return ONLY a JSON array with this structure (no other text):
-[
-  {
-    "name": "Short endpoint name",
-    "url": "https://api.example.com/v1/resource",
-    "method": "GET",
-    "description": "What this endpoint does",
-    "auth_type": "OAuth 2.0 / API Key / Bearer Token / etc.",
-    "rate_limit": "e.g., 100 requests/minute",
-    "parameters": [
-      {
-        "name": "param_name",
-        "type": "string",
-        "location": "path|query|header|body",
-        "required": true,
-        "description": "What this parameter does"
-      }
-    ],
-    "response_fields": [
-      {
-        "name": "field_name",
-        "type": "string",
-        "json_path": "$.data.field",
-        "description": "What this field contains"
-      }
-    ],
-    "documentation_url": "https://docs.example.com/api/endpoint",
-    "ai_confidence": "high|medium|low",
-    "ai_notes": "Any additional context or caveats"
-  }
-]`;
-
-    const userPrompt = `Suggest relevant API endpoints for this integration:
-
-Integration: ${params.integrationName}
-Node Name: ${params.nodeName}
-Goal: ${params.goal || 'Not specified'}
-
-Tasks:
-${params.tasks.length > 0 ? params.tasks.map((t, i) => `${i + 1}. ${t}`).join('\n') : 'None specified'}
-
-Inputs: ${params.inputs.length > 0 ? params.inputs.map(i => `${i.name}${i.required ? ' (required)' : ''}`).join(', ') : 'None specified'}
-Outputs: ${params.outputs.length > 0 ? params.outputs.map(o => `${o.name}${o.required ? ' (required)' : ''}`).join(', ') : 'None specified'}
-
-Return ONLY the JSON array of suggested endpoints.`;
+    const userPrompt = prompts.userPromptTemplate
+      .replace('{{INTEGRATION_NAME}}', params.integrationName)
+      .replace('{{NODE_NAME}}', params.nodeName)
+      .replace('{{GOAL}}', params.goal || 'Not specified')
+      .replace('{{TASKS}}', formattedTasks)
+      .replace('{{INPUTS}}', formattedInputs)
+      .replace('{{OUTPUTS}}', formattedOutputs);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
