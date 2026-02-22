@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit2, Check, X } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2, Check, X, Plus, Trash2 } from 'lucide-react';
 import { useBlueprintStore, useUIStore } from '../../store';
 import { STATUS_OPTIONS } from '../../data/statusOptions';
 import type { Status } from '../../types';
@@ -39,12 +39,20 @@ export function BlueprintHeader() {
     return new Date(dateStr).toLocaleString();
   };
 
-  const handleArrayFieldChange = (
-    field: 'impactedAudiences' | 'businessBenefits' | 'clientContacts',
-    value: string
-  ) => {
-    const items = value.split('\n').filter((item) => item.trim());
-    updateMetadata({ [field]: items });
+  type ArrayField = 'impactedAudiences' | 'businessBenefits' | 'clientContacts';
+
+  const handleArrayItemChange = (field: ArrayField, items: string[], index: number, value: string) => {
+    const updated = [...items];
+    updated[index] = value;
+    updateMetadata({ [field]: updated });
+  };
+
+  const handleArrayItemAdd = (field: ArrayField, items: string[]) => {
+    updateMetadata({ [field]: [...items, ''] });
+  };
+
+  const handleArrayItemRemove = (field: ArrayField, items: string[], index: number) => {
+    updateMetadata({ [field]: items.filter((_, i) => i !== index) });
   };
 
   return (
@@ -194,44 +202,116 @@ export function BlueprintHeader() {
           <div className="space-y-4">
             {/* Impacted Audiences */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Impacted Audiences (one per line)
-              </label>
-              <textarea
-                value={impactedAudiences.join('\n')}
-                onChange={(e) => handleArrayFieldChange('impactedAudiences', e.target.value)}
-                rows={2}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                placeholder="Sales Team&#10;Customer Support"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Impacted Audiences
+                </label>
+                <button
+                  onClick={() => handleArrayItemAdd('impactedAudiences', impactedAudiences)}
+                  className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-1.5 py-0.5 rounded transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {impactedAudiences.map((item, index) => (
+                  <div key={index} className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={(e) => handleArrayItemChange('impactedAudiences', impactedAudiences, index, e.target.value)}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. Sales Team"
+                    />
+                    <button
+                      onClick={() => handleArrayItemRemove('impactedAudiences', impactedAudiences, index)}
+                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {impactedAudiences.length === 0 && (
+                  <p className="text-xs text-gray-400 italic">No audiences added yet</p>
+                )}
+              </div>
             </div>
 
             {/* Business Benefits */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Business Benefits (one per line)
-              </label>
-              <textarea
-                value={businessBenefits.join('\n')}
-                onChange={(e) => handleArrayFieldChange('businessBenefits', e.target.value)}
-                rows={2}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                placeholder="Reduced processing time&#10;Improved accuracy"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Business Benefits
+                </label>
+                <button
+                  onClick={() => handleArrayItemAdd('businessBenefits', businessBenefits)}
+                  className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-1.5 py-0.5 rounded transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {businessBenefits.map((item, index) => (
+                  <div key={index} className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={(e) => handleArrayItemChange('businessBenefits', businessBenefits, index, e.target.value)}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. Reduced processing time"
+                    />
+                    <button
+                      onClick={() => handleArrayItemRemove('businessBenefits', businessBenefits, index)}
+                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {businessBenefits.length === 0 && (
+                  <p className="text-xs text-gray-400 italic">No benefits added yet</p>
+                )}
+              </div>
             </div>
 
             {/* Client Contacts */}
             <div>
-              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Client Contacts (one per line)
-              </label>
-              <textarea
-                value={clientContacts.join('\n')}
-                onChange={(e) => handleArrayFieldChange('clientContacts', e.target.value)}
-                rows={2}
-                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
-                placeholder="John Doe - john@example.com"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Client Contacts
+                </label>
+                <button
+                  onClick={() => handleArrayItemAdd('clientContacts', clientContacts)}
+                  className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 hover:bg-purple-50 px-1.5 py-0.5 rounded transition-colors"
+                >
+                  <Plus className="w-3 h-3" />
+                  Add
+                </button>
+              </div>
+              <div className="space-y-1.5">
+                {clientContacts.map((item, index) => (
+                  <div key={index} className="flex items-center gap-1.5">
+                    <input
+                      type="text"
+                      value={item}
+                      onChange={(e) => handleArrayItemChange('clientContacts', clientContacts, index, e.target.value)}
+                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                      placeholder="e.g. John Doe - john@example.com"
+                    />
+                    <button
+                      onClick={() => handleArrayItemRemove('clientContacts', clientContacts, index)}
+                      className="p-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded transition-colors"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+                {clientContacts.length === 0 && (
+                  <p className="text-xs text-gray-400 italic">No contacts added yet</p>
+                )}
+              </div>
             </div>
 
             {/* Last Modified Info */}
