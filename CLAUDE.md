@@ -403,6 +403,34 @@ PDF exports (.pdf) provide professional client-ready documentation:
 7. **Comments**: Table of all comments with node, author, date, text, and resolution status (if any)
 8. **Change Log**: Version history with dates, authors, and descriptions (if any)
 
+### Word Document (BRD) Export
+
+Word exports (.docx) generate a professional Business Requirements Document using the `docx` library:
+
+1. **Cover Page**: "BUSINESS REQUIREMENTS DOCUMENT" title, blueprint name, version, status, client, project, author, date, confidentiality notice
+2. **Version History**: Change log table + blank Document Approval table (Business Owner, Technical Lead, Project Manager)
+3. **Table of Contents**: Auto-generated TOC field (right-click → Update Field in Word)
+4. **Executive Summary**:
+   - 1.1 Process Overview: Description + auto-generated node count summary
+   - 1.2 Impacted Audiences: Bullet list
+   - 1.3 Business Benefits: Bullet list
+   - 1.4 Key Contacts: Bullet list
+5. **Process Flow Overview**:
+   - 2.1 Flow Diagram: Embedded canvas PNG via ImageRun (scaled to page width)
+   - 2.2 Node Summary Table: BFS-ordered # | Name | Type | Description
+6. **Detailed Node Specifications**: Per node (BFS order):
+   - Metadata table (ID, Type, Sub-Type)
+   - Type-specific content: Trigger (description, config), Work (goal, inputs table, numbered tasks, outputs table, integrations table, API endpoint details with parameters/response fields), Decision (description, branches table), End (outcome), Workflow (name, version, description, I/O tables)
+7. **Integration Specifications**: Aggregated by system name with endpoint tables and rich metadata
+8. **Appendices**: A. Glossary, B. Data Field Definitions (auto-generated from all I/O), C. Error Handling placeholder
+
+**Technical Details:**
+- **Library**: `docx` (Packer.toBlob for browser download)
+- **Styling**: Calibri font, blue (#2B579A) headings, gray header table shading, 1-inch margins
+- **Headers/Footers**: Blueprint title (italic, right-aligned) / "Page X of Y" (centered)
+- **Node Ordering**: BFS from trigger nodes; disconnected nodes appended at end
+- **File**: `src/utils/exportWord.ts`
+
 ### JSON Export
 
 JSON exports (.blueprint.json) provide full data for re-import:
@@ -457,6 +485,20 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 - **Task Management**: ListEditor uses @hello-pangea/dnd for drag-and-drop, useTaskAutoOrder hook for AI reordering
 
 ## Recent Updates
+
+### Word Document (BRD) Export
+- **Professional Word Export**: New `.docx` export option in Export dialog generating a Business Requirements Document
+  - Cover page with title, version, status, client, project, author, date, confidentiality notice
+  - Version history table from change log + blank Document Approval table
+  - Auto-generated Table of Contents (Word field)
+  - Executive summary with process overview, node count breakdown, audiences, benefits, contacts
+  - Embedded canvas diagram via ImageRun (scaled to page width)
+  - BFS-ordered node summary table and detailed per-node specifications
+  - Integration specifications aggregated by system name with API endpoint details
+  - Appendices: glossary, auto-generated data field definitions, error handling placeholder
+  - Calibri font, blue headings, page headers/footers, 1-inch margins
+- **Dependency**: `docx` npm package for browser-based .docx generation via `Packer.toBlob()`
+- **Files**: New `src/utils/exportWord.ts`, updated `src/hooks/useExport.ts`, updated `src/components/dialogs/ExportDialog.tsx`
 
 ### AI Prompt Admin (Centralized Prompt Management)
 - **Centralized Prompt Storage** (`src/utils/aiPromptStorage.ts`):

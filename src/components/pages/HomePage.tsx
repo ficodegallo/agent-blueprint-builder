@@ -35,6 +35,8 @@ export function HomePage() {
       id: newId,
       title: 'Untitled Blueprint',
       description: '',
+      clientName: '',
+      projectName: '',
       impactedAudiences: [],
       businessBenefits: [],
       clientContacts: [],

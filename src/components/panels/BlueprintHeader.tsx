@@ -15,6 +15,8 @@ export function BlueprintHeader() {
   const createdBy = useBlueprintStore((state) => state.createdBy);
   const lastModifiedBy = useBlueprintStore((state) => state.lastModifiedBy);
   const lastModifiedDate = useBlueprintStore((state) => state.lastModifiedDate);
+  const clientName = useBlueprintStore((state) => state.clientName);
+  const projectName = useBlueprintStore((state) => state.projectName);
   const impactedAudiences = useBlueprintStore((state) => state.impactedAudiences);
   const businessBenefits = useBlueprintStore((state) => state.businessBenefits);
   const clientContacts = useBlueprintStore((state) => state.clientContacts);
@@ -135,6 +137,34 @@ export function BlueprintHeader() {
                 className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
                 placeholder="Brief description of this blueprint..."
               />
+            </div>
+
+            {/* Client Name / Project Name */}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                  Client Name
+                </label>
+                <input
+                  type="text"
+                  value={clientName}
+                  onChange={(e) => updateMetadata({ clientName: e.target.value })}
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. Acme Corp"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                  Project / Engagement
+                </label>
+                <input
+                  type="text"
+                  value={projectName}
+                  onChange={(e) => updateMetadata({ projectName: e.target.value })}
+                  className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g. HR Onboarding Automation"
+                />
+              </div>
             </div>
 
             {/* Status and Version */}

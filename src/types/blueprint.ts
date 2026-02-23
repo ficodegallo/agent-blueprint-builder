@@ -11,6 +11,8 @@ export interface BlueprintMetadata {
   id: string;
   title: string;
   description: string;
+  clientName: string;
+  projectName: string;
   impactedAudiences: string[];
   businessBenefits: string[];
   clientContacts: string[];

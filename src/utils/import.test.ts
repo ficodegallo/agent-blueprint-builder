@@ -8,6 +8,8 @@ function createValidBlueprint(): Blueprint {
     id: 'test-blueprint-id',
     title: 'Test Blueprint',
     description: 'A test blueprint',
+    clientName: '',
+    projectName: '',
     impactedAudiences: [],
     businessBenefits: [],
     clientContacts: [],

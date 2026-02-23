@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useLocalStorage } from './useLocalStorage';
 import { downloadJSON, exportToExcel, exportToPDF } from '../utils/export';
+import { exportToWord } from '../utils/exportWord';
 import { captureFullCanvas } from '../utils/canvasExport';
 
 export function useExport() {
@@ -26,9 +27,16 @@ export function useExport() {
     exportToPDF(blueprint, undefined, canvasImage);
   }, [getCurrentBlueprint]);
 
+  const exportWord = useCallback(async () => {
+    const blueprint = getCurrentBlueprint();
+    const canvasImage = await captureFullCanvas();
+    await exportToWord(blueprint, canvasImage);
+  }, [getCurrentBlueprint]);
+
   return {
     exportJSON,
     exportExcel,
     exportPDF,
+    exportWord,
   };
 }

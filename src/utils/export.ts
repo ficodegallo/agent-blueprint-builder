@@ -54,6 +54,8 @@ export function exportToExcel(blueprint: Blueprint, filename?: string) {
     ['Field', 'Value'],
     ['Title', blueprint.title],
     ['Description', blueprint.description],
+    ['Client Name', blueprint.clientName || ''],
+    ['Project / Engagement', blueprint.projectName || ''],
     ['Version', blueprint.version],
     ['Status', blueprint.status],
     ['Created By', blueprint.createdBy],
@@ -264,6 +266,8 @@ export function exportToPDF(blueprint: Blueprint, filename?: string, canvasImage
   doc.setFont('helvetica', 'normal');
 
   const metadataItems = [
+    ['Client Name:', blueprint.clientName || 'N/A'],
+    ['Project / Engagement:', blueprint.projectName || 'N/A'],
     ['Created By:', blueprint.createdBy || 'N/A'],
     ['Last Modified By:', blueprint.lastModifiedBy || 'N/A'],
     ['Last Modified Date:', blueprint.lastModifiedDate || 'N/A'],

@@ -142,6 +142,8 @@ function convertToBlueprint(response: ClaudeResponse): Blueprint {
     id: blueprintId,
     title: response.blueprint.title,
     description: response.blueprint.description || '',
+    clientName: '',
+    projectName: '',
     impactedAudiences: [],
     businessBenefits: [],
     clientContacts: [],

@@ -1,4 +1,4 @@
-import { FileJson, FileSpreadsheet, FileText, Download } from 'lucide-react';
+import { FileJson, FileSpreadsheet, FileText, FileType, Download } from 'lucide-react';
 import { Modal } from '../shared/Modal';
 import { useExport } from '../../hooks/useExport';
 import { useUIStore } from '../../store';
@@ -6,7 +6,7 @@ import { useUIStore } from '../../store';
 export function ExportDialog() {
   const activeDialog = useUIStore((state) => state.activeDialog);
   const closeDialog = useUIStore((state) => state.closeDialog);
-  const { exportJSON, exportExcel, exportPDF } = useExport();
+  const { exportJSON, exportExcel, exportPDF, exportWord } = useExport();
 
   const isOpen = activeDialog === 'export';
 
@@ -22,6 +22,11 @@ export function ExportDialog() {
 
   const handleExportPDF = async () => {
     await exportPDF();
+    closeDialog();
+  };
+
+  const handleExportWord = async () => {
+    await exportWord();
     closeDialog();
   };
 
@@ -75,6 +80,22 @@ export function ExportDialog() {
             <div className="font-medium text-gray-900">PDF Format</div>
             <div className="text-sm text-gray-500">
               Professional document for client sharing
+            </div>
+          </div>
+          <Download className="w-5 h-5 text-gray-400" />
+        </button>
+
+        <button
+          onClick={handleExportWord}
+          className="w-full flex items-center gap-3 p-4 border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 transition-colors text-left"
+        >
+          <div className="p-2 bg-indigo-100 rounded-lg">
+            <FileType className="w-6 h-6 text-indigo-600" />
+          </div>
+          <div className="flex-1">
+            <div className="font-medium text-gray-900">Word Document (BRD)</div>
+            <div className="text-sm text-gray-500">
+              Professional requirements document for stakeholder handoff
             </div>
           </div>
           <Download className="w-5 h-5 text-gray-400" />

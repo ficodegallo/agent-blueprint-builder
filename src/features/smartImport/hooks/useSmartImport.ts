@@ -252,6 +252,8 @@ export function useSmartImport() {
       id: blueprint.id,
       title: blueprint.title,
       description: blueprint.description,
+      clientName: blueprint.clientName || '',
+      projectName: blueprint.projectName || '',
       impactedAudiences: blueprint.impactedAudiences,
       businessBenefits: blueprint.businessBenefits,
       clientContacts: blueprint.clientContacts,
