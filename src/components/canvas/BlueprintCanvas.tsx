@@ -1,4 +1,4 @@
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -6,8 +6,10 @@ import {
   MiniMap,
   useReactFlow,
   type NodeMouseHandler,
+  type NodeChange,
 } from '@xyflow/react';
 import { useNodesStore, useEdgesStore, useUIStore } from '../../store';
+import type { AppNode } from '../../store/nodesStore';
 import { nodeTypes } from '../nodes';
 import { edgeTypes } from '../edges';
 import type { NodeData } from '../../types';
@@ -19,11 +21,48 @@ export function BlueprintCanvas() {
 
   const nodes = useNodesStore((state) => state.nodes);
   const edges = useEdgesStore((state) => state.edges);
-  const onNodesChange = useNodesStore((state) => state.onNodesChange);
+  const applyNodesChange = useNodesStore((state) => state.onNodesChange);
   const onEdgesChange = useEdgesStore((state) => state.onEdgesChange);
   const onConnect = useEdgesStore((state) => state.onConnect);
   const addNode = useNodesStore((state) => state.addNode);
   const selectNode = useUIStore((state) => state.selectNode);
+
+  // Delete confirmation state
+  const [pendingDelete, setPendingDelete] = useState<{ nodeNames: string[]; changes: NodeChange<AppNode>[] } | null>(null);
+
+  const onNodesChange = useCallback(
+    (changes: NodeChange<AppNode>[]) => {
+      const removeChanges = changes.filter((c) => c.type === 'remove');
+      const otherChanges = changes.filter((c) => c.type !== 'remove');
+
+      // Apply non-delete changes immediately
+      if (otherChanges.length > 0) {
+        applyNodesChange(otherChanges);
+      }
+
+      // Intercept deletes with confirmation
+      if (removeChanges.length > 0) {
+        const nodeNames = removeChanges.map((c) => {
+          const node = nodes.find((n) => n.id === c.id);
+          return (node?.data.name as string) || c.id;
+        });
+        setPendingDelete({ nodeNames, changes: removeChanges });
+      }
+    },
+    [applyNodesChange, nodes]
+  );
+
+  const confirmDelete = useCallback(() => {
+    if (pendingDelete) {
+      applyNodesChange(pendingDelete.changes);
+      selectNode(null);
+    }
+    setPendingDelete(null);
+  }, [pendingDelete, applyNodesChange, selectNode]);
+
+  const cancelDelete = useCallback(() => {
+    setPendingDelete(null);
+  }, []);
 
   const handleNodeClick: NodeMouseHandler = useCallback(
     (_event, node) => {
@@ -157,6 +196,37 @@ export function BlueprintCanvas() {
         maskColor="rgba(0, 0, 0, 0.1)"
       />
     </ReactFlow>
+
+      {/* Delete confirmation dialog */}
+      {pendingDelete && (
+        <div className="absolute inset-0 flex items-center justify-center z-50">
+          <div className="absolute inset-0 bg-black/30" onClick={cancelDelete} />
+          <div className="relative bg-white rounded-lg shadow-xl border border-gray-200 p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Node{pendingDelete.nodeNames.length > 1 ? 's' : ''}?</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Are you sure you want to delete{' '}
+              <span className="font-medium text-gray-900">
+                {pendingDelete.nodeNames.join(', ')}
+              </span>
+              ? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={cancelDelete}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

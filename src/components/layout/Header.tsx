@@ -1,6 +1,16 @@
 import { useNavigate } from 'react-router-dom';
-import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles } from 'lucide-react';
-import { useBlueprintStore, useUIStore } from '../../store';
+import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList } from 'lucide-react';
+import { useBlueprintStore, useUIStore, useParkingLotStore, selectUnresolvedParkingLotCount } from '../../store';
+import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
+import type { SyncStatus } from '../../services/blueprintStorage';
+import { NodeSearch } from './NodeSearch';
+
+const syncConfig: Record<SyncStatus, { color: string; pulse: boolean; tooltip: string }> = {
+  synced: { color: 'bg-green-500', pulse: false, tooltip: 'Saved to cloud' },
+  pending: { color: 'bg-amber-500', pulse: true, tooltip: 'Saving...' },
+  offline: { color: 'bg-gray-400', pulse: false, tooltip: 'Offline — saving locally' },
+  error: { color: 'bg-red-500', pulse: false, tooltip: 'Sync error — click to retry' },
+};
 
 interface HeaderProps {
   showBackButton?: boolean;
@@ -11,6 +21,19 @@ export function Header({ showBackButton = false }: HeaderProps) {
   const title = useBlueprintStore((state) => state.title);
   const status = useBlueprintStore((state) => state.status);
   const openDialog = useUIStore((state) => state.openDialog);
+  const toggleParkingLot = useUIStore((state) => state.toggleParkingLot);
+  const unresolvedCount = useParkingLotStore(selectUnresolvedParkingLotCount);
+
+  const syncStatus = useBlueprintsLibraryStore((state) => state.syncStatus);
+  const retrySyncPending = useBlueprintsLibraryStore((state) => state.retrySyncPending);
+
+  const sync = syncConfig[syncStatus];
+
+  const handleSyncClick = () => {
+    if (syncStatus === 'error' || syncStatus === 'pending') {
+      retrySyncPending();
+    }
+  };
 
   return (
     <div className="h-full flex items-center justify-between px-4">
@@ -32,6 +55,17 @@ export function Header({ showBackButton = false }: HeaderProps) {
             <Boxes className="w-5 h-5 text-purple-600" />
           )}
           <h1 className="text-lg font-semibold text-gray-800">{title}</h1>
+          <button
+            onClick={handleSyncClick}
+            title={sync.tooltip}
+            className={`relative w-2.5 h-2.5 rounded-full ${sync.color} ${
+              syncStatus === 'error' || syncStatus === 'pending' ? 'cursor-pointer' : 'cursor-default'
+            }`}
+          >
+            {sync.pulse && (
+              <span className={`absolute inset-0 rounded-full ${sync.color} animate-ping opacity-75`} />
+            )}
+          </button>
         </div>
         <span
           className={`
@@ -46,6 +80,9 @@ export function Header({ showBackButton = false }: HeaderProps) {
         </span>
       </div>
 
+      {/* Center - Node search (editor only) */}
+      {showBackButton && <NodeSearch />}
+
       {/* Right side - Actions */}
       <div className="flex items-center gap-2">
         <button
@@ -54,6 +91,18 @@ export function Header({ showBackButton = false }: HeaderProps) {
         >
           <Sparkles className="w-4 h-4" />
           Smart Import
+        </button>
+        <button
+          onClick={toggleParkingLot}
+          className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        >
+          <ClipboardList className="w-4 h-4" />
+          Parking Lot
+          {unresolvedCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 bg-amber-500 text-white text-xs font-bold rounded-full">
+              {unresolvedCount}
+            </span>
+          )}
         </button>
         <button
           onClick={() => openDialog('saveLoad')}

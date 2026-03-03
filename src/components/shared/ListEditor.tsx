@@ -215,7 +215,7 @@ export function ListEditor({
           <button
             onClick={onAutoOrder}
             disabled={isAutoOrdering}
-            className="flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-purple-600 hover:text-purple-700 hover:bg-purple-50 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Sparkles size={12} />
             {isAutoOrdering ? 'Ordering...' : 'Auto-order'}
@@ -238,8 +238,8 @@ export function ListEditor({
                     {(provided, snapshot) => (
                       <div
                         ref={provided.innerRef}
-                        style={provided.draggableProps.style}
-                        className={`flex items-center gap-1.5 relative ${snapshot.isDragging ? 'bg-white shadow-lg' : ''}`}
+                        {...provided.draggableProps}
+                        className={`flex items-center gap-1.5 relative ${snapshot.isDragging ? 'bg-white shadow-lg rounded' : ''}`}
                       >
                         <div
                           {...provided.dragHandleProps}

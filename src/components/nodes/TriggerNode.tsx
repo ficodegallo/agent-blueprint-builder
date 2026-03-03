@@ -4,6 +4,7 @@ import { Zap, Clock, MousePointer } from 'lucide-react';
 import { BaseNode } from './BaseNode';
 import type { TriggerNodeData } from '../../types';
 import { NODE_COLORS } from '../../constants';
+import { useParkingLotStore, selectUnresolvedParkingLotCountForNode, useUIStore } from '../../store';
 
 const TRIGGER_ICONS = {
   event: Zap,
@@ -18,11 +19,14 @@ const TRIGGER_LABELS = {
 } as const;
 
 export const TriggerNode = memo(function TriggerNode({
+  id,
   data,
   selected,
 }: NodeProps & { data: TriggerNodeData }) {
   const colors = NODE_COLORS.trigger;
   const Icon = TRIGGER_ICONS[data.triggerType];
+  const plCount = useParkingLotStore(selectUnresolvedParkingLotCountForNode(id));
+  const openParkingLotForNode = useUIStore((s) => s.openParkingLotForNode);
 
   return (
     <BaseNode
@@ -34,6 +38,8 @@ export const TriggerNode = memo(function TriggerNode({
       showSourceHandle={true}
       aiConfidence={data.ai_confidence}
       aiGenerated={data.ai_generated}
+      parkingLotCount={plCount}
+      onParkingLotBadgeClick={() => openParkingLotForNode(id)}
     >
       <div className="flex items-start gap-2">
         <div className={`p-1.5 rounded ${colors.accent} text-white shrink-0`}>

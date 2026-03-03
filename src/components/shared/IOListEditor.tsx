@@ -7,6 +7,7 @@ interface IOListEditorProps {
   items: IOItem[];
   onChange: (items: IOItem[]) => void;
   placeholder?: string;
+  headerAction?: React.ReactNode;
 }
 
 export function IOListEditor({
@@ -14,6 +15,7 @@ export function IOListEditor({
   items,
   onChange,
   placeholder = 'Add item...',
+  headerAction,
 }: IOListEditorProps) {
   const [newItem, setNewItem] = useState('');
 
@@ -49,7 +51,10 @@ export function IOListEditor({
 
   return (
     <div className="mb-4">
-      <label className="block text-sm font-medium text-gray-700 mb-1">{label}</label>
+      <div className="flex items-center justify-between mb-1">
+        <label className="text-sm font-medium text-gray-700">{label}</label>
+        {headerAction}
+      </div>
 
       {/* Existing items */}
       {items.length > 0 && (

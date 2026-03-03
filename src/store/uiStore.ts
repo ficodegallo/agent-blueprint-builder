@@ -11,9 +11,12 @@ interface UIState {
   isTemplatePanelOpen: boolean;
   isValidationPanelOpen: boolean;
   isHeaderExpanded: boolean;
+  isParkingLotOpen: boolean;
+  parkingLotNodeFilter: string | null;
 
   // Dialogs
-  activeDialog: 'export' | 'import' | 'saveLoad' | 'newBlueprint' | 'smartImport' | 'apiKeySettings' | 'aiPromptAdmin' | null;
+  activeDialog: 'export' | 'import' | 'saveLoad' | 'newBlueprint' | 'smartImport' | 'apiKeySettings' | 'aiPromptAdmin' | 'parkingLotItem' | null;
+  editingParkingLotItemId: string | null;
 
   // Actions
   selectNode: (id: string | null) => void;
@@ -25,6 +28,9 @@ interface UIState {
   toggleTemplatePanel: () => void;
   toggleValidationPanel: () => void;
   toggleHeader: () => void;
+  toggleParkingLot: () => void;
+  closeParkingLot: () => void;
+  openParkingLotForNode: (nodeId: string) => void;
 
   setDetailPanelOpen: (open: boolean) => void;
   setTemplatePanelOpen: (open: boolean) => void;
@@ -33,6 +39,7 @@ interface UIState {
 
   openDialog: (dialog: UIState['activeDialog']) => void;
   closeDialog: () => void;
+  openParkingLotItemDialog: (itemId?: string | null) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -44,7 +51,10 @@ export const useUIStore = create<UIState>((set) => ({
   isTemplatePanelOpen: true,
   isValidationPanelOpen: false,
   isHeaderExpanded: false,
+  isParkingLotOpen: false,
+  parkingLotNodeFilter: null,
   activeDialog: null,
+  editingParkingLotItemId: null,
 
   // Selection actions
   selectNode: (id) =>
@@ -87,6 +97,18 @@ export const useUIStore = create<UIState>((set) => ({
   toggleHeader: () =>
     set((state) => ({ isHeaderExpanded: !state.isHeaderExpanded })),
 
+  toggleParkingLot: () =>
+    set((state) => ({
+      isParkingLotOpen: !state.isParkingLotOpen,
+      parkingLotNodeFilter: state.isParkingLotOpen ? null : state.parkingLotNodeFilter,
+    })),
+
+  closeParkingLot: () =>
+    set({ isParkingLotOpen: false, parkingLotNodeFilter: null }),
+
+  openParkingLotForNode: (nodeId) =>
+    set({ isParkingLotOpen: true, parkingLotNodeFilter: nodeId }),
+
   // Panel set actions
   setDetailPanelOpen: (open) => set({ isDetailPanelOpen: open }),
   setTemplatePanelOpen: (open) => set({ isTemplatePanelOpen: open }),
@@ -95,5 +117,7 @@ export const useUIStore = create<UIState>((set) => ({
 
   // Dialog actions
   openDialog: (dialog) => set({ activeDialog: dialog }),
-  closeDialog: () => set({ activeDialog: null }),
+  closeDialog: () => set({ activeDialog: null, editingParkingLotItemId: null }),
+  openParkingLotItemDialog: (itemId = null) =>
+    set({ activeDialog: 'parkingLotItem', editingParkingLotItemId: itemId ?? null }),
 }));

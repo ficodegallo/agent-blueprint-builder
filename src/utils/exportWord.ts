@@ -1117,7 +1117,7 @@ function buildAppendices(
 ): (Paragraph | Table)[] {
   const elements: (Paragraph | Table)[] = [];
 
-  elements.push(heading1('5. Appendices'));
+  elements.push(heading1('6. Appendices'));
 
   // A. Glossary
   elements.push(heading2('A. Glossary'));
@@ -1196,6 +1196,51 @@ function buildAppendices(
   // C. Error Handling
   elements.push(heading2('C. Error Handling'));
   elements.push(bodyText('To be defined during implementation planning.'));
+
+  return elements;
+}
+
+function buildParkingLot(blueprint: Blueprint): (Paragraph | Table)[] {
+  const elements: (Paragraph | Table)[] = [];
+  const items = blueprint.parkingLot || [];
+
+  elements.push(heading1('5. Open Items & Parking Lot'));
+
+  if (items.length === 0) {
+    elements.push(bodyText('No open items recorded.'));
+    return elements;
+  }
+
+  const rows = items.map((item) => {
+    const linkedNode = item.linkedNodeId
+      ? blueprint.nodes.find((n) => n.id === item.linkedNodeId)?.data.name || item.linkedNodeId
+      : 'Blueprint Overall';
+    return makeRow(
+      { text: item.title, width: 20 },
+      { text: item.status, width: 12 },
+      { text: item.owner || '—', width: 12 },
+      { text: linkedNode, width: 16 },
+      { text: item.description || '—', width: 20 },
+      { text: item.resolution || '—', width: 20 }
+    );
+  });
+
+  elements.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        makeHeaderRow(
+          { text: 'Title', width: 20 },
+          { text: 'Status', width: 12 },
+          { text: 'Owner', width: 12 },
+          { text: 'Linked Node', width: 16 },
+          { text: 'Description', width: 20 },
+          { text: 'Resolution', width: 20 }
+        ),
+        ...rows,
+      ],
+    })
+  );
 
   return elements;
 }
@@ -1308,6 +1353,7 @@ export async function exportToWord(
           ...flowOverview,
           ...buildDetailedNodeSpecs(blueprint, orderedNodes),
           ...buildIntegrationSpecs(blueprint, orderedNodes),
+          ...buildParkingLot(blueprint),
           ...buildAppendices(blueprint, orderedNodes),
         ],
       },

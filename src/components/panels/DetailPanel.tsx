@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { X, Sparkles, AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Plus, Search } from 'lucide-react';
+import { X, Sparkles, AlertCircle, CheckCircle, AlertTriangle, ExternalLink, Plus, Search, Download, Upload } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { useNodesStore, useUIStore } from '../../store';
+import { useShallow } from 'zustand/react/shallow';
+import { useNodesStore, useEdgesStore, useUIStore } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 import { NodeComments } from './NodeComments';
 import { ListEditor } from '../shared/ListEditor';
@@ -10,7 +11,7 @@ import { IntegrationDetailsDialog } from './IntegrationDetailsDialog';
 import { ApiDiscoveryDialog } from '../dialogs/ApiDiscoveryDialog';
 import { useTaskAutoOrder } from '../../hooks/useTaskAutoOrder';
 import { useGoalEvaluate } from '../../hooks/useGoalEvaluate';
-import { migrateIntegrations, type IntegrationDetail, type ApiEndpoint } from '../../types';
+import { migrateIntegrations, type IntegrationDetail, type ApiEndpoint, type IOItem } from '../../types';
 
 export function DetailPanel() {
   const selectedNodeId = useUIStore((state) => state.selectedNodeId);
@@ -44,6 +45,11 @@ export function DetailPanel() {
     clearError: clearGoalEvalError,
     clearSuggestion,
   } = useGoalEvaluate();
+
+  // Incoming edges for inherit inputs
+  const incomingEdges = useEdgesStore(
+    useShallow((state) => state.edges.filter((e) => e.target === (selectedNodeId ?? '')))
+  );
 
   // Get saved blueprints for workflow linking
   const savedBlueprints = getBlueprintSummaries();
@@ -92,6 +98,46 @@ export function DetailPanel() {
       inputs: data.inputs,
       outputs: data.outputs,
     });
+  };
+
+  // Handle inheriting inputs from upstream nodes
+  const handleInheritInputs = () => {
+    if (!selectedNode) return;
+    const nodeData = selectedNode.data;
+    if (nodeData.nodeType !== 'work' && nodeData.nodeType !== 'workflow') return;
+
+    const inherited: IOItem[] = [];
+    for (const edge of incomingEdges) {
+      const sourceNode = getNode(edge.source);
+      if (!sourceNode) continue;
+      if (sourceNode.data.nodeType === 'work' || sourceNode.data.nodeType === 'workflow') {
+        inherited.push(...(sourceNode.data.outputs as IOItem[]));
+      }
+    }
+    if (inherited.length === 0) return;
+
+    const existingNames = new Set(nodeData.inputs.map((i: IOItem) => i.name.toLowerCase()));
+    const newItems = inherited.filter(
+      (o) => o.name.trim() && !existingNames.has(o.name.toLowerCase())
+    );
+    if (newItems.length === 0) return;
+
+    updateNode(selectedNode.id, { inputs: [...nodeData.inputs, ...newItems] });
+  };
+
+  // Handle inheriting outputs from the node's own inputs
+  const handleInheritOutputs = () => {
+    if (!selectedNode) return;
+    const nodeData = selectedNode.data;
+    if (nodeData.nodeType !== 'work' && nodeData.nodeType !== 'workflow') return;
+
+    const existingNames = new Set(nodeData.outputs.map((o: IOItem) => o.name.toLowerCase()));
+    const newItems = nodeData.inputs.filter(
+      (i: IOItem) => i.name.trim() && !existingNames.has(i.name.toLowerCase())
+    );
+    if (newItems.length === 0) return;
+
+    updateNode(selectedNode.id, { outputs: [...nodeData.outputs, ...newItems] });
   };
 
   if (!selectedNode) {
@@ -283,6 +329,16 @@ export function DetailPanel() {
             items={data.inputs}
             onChange={(inputs) => updateNode(selectedNode.id, { inputs })}
             placeholder="Add input..."
+            headerAction={incomingEdges.length > 0 ? (
+              <button
+                onClick={handleInheritInputs}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md transition-colors"
+                title="Inherit outputs from upstream nodes as inputs"
+              >
+                <Download size={12} />
+                Inherit Inputs
+              </button>
+            ) : undefined}
           />
           <ListEditor
             label="Tasks"
@@ -321,6 +377,16 @@ export function DetailPanel() {
             items={data.outputs}
             onChange={(outputs) => updateNode(selectedNode.id, { outputs })}
             placeholder="Add output..."
+            headerAction={data.inputs.length > 0 ? (
+              <button
+                onClick={handleInheritOutputs}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md transition-colors"
+                title="Inherit inputs from this node as outputs"
+              >
+                <Upload size={12} />
+                Inherit Outputs
+              </button>
+            ) : undefined}
           />
           {/* Enhanced Integrations Section */}
           <div className="mb-4">
@@ -629,12 +695,32 @@ export function DetailPanel() {
             items={data.inputs}
             onChange={(inputs) => updateNode(selectedNode.id, { inputs })}
             placeholder="Add input..."
+            headerAction={incomingEdges.length > 0 ? (
+              <button
+                onClick={handleInheritInputs}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md transition-colors"
+                title="Inherit outputs from upstream nodes as inputs"
+              >
+                <Download size={12} />
+                Inherit Inputs
+              </button>
+            ) : undefined}
           />
           <IOListEditor
             label="Outputs (returned from workflow)"
             items={data.outputs}
             onChange={(outputs) => updateNode(selectedNode.id, { outputs })}
             placeholder="Add output..."
+            headerAction={data.inputs.length > 0 ? (
+              <button
+                onClick={handleInheritOutputs}
+                className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded-md transition-colors"
+                title="Inherit inputs from this node as outputs"
+              >
+                <Upload size={12} />
+                Inherit Outputs
+              </button>
+            ) : undefined}
           />
         </>
       )}

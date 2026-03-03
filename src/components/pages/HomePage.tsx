@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Plus, Boxes, Users, Target, Award, BookOpen, Settings } from 'lucide-react';
 import { useBlueprintsLibraryStore, type BlueprintSummary } from '../../store/blueprintsLibraryStore';
@@ -14,6 +14,12 @@ export function HomePage() {
   const [showPromptAdmin, setShowPromptAdmin] = useState(false);
   const getBlueprintSummaries = useBlueprintsLibraryStore((state) => state.getBlueprintSummaries);
   const addBlueprint = useBlueprintsLibraryStore((state) => state.addBlueprint);
+  const loadFromServer = useBlueprintsLibraryStore((state) => state.loadFromServer);
+
+  // Refresh from Supabase on mount
+  useEffect(() => {
+    loadFromServer();
+  }, [loadFromServer]);
 
   const blueprints = getBlueprintSummaries();
 
@@ -49,6 +55,7 @@ export function HomePage() {
       nodes: [],
       edges: [],
       comments: [],
+      parkingLot: [],
     });
     navigate(`/blueprint/${newId}`);
   };

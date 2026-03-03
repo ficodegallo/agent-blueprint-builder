@@ -4,6 +4,7 @@ import { Bot, Cog, User } from 'lucide-react';
 import { BaseNode } from './BaseNode';
 import type { WorkNodeData } from '../../types';
 import { NODE_COLORS } from '../../constants';
+import { useParkingLotStore, selectUnresolvedParkingLotCountForNode, useUIStore } from '../../store';
 
 const WORKER_ICONS = {
   agent: Bot,
@@ -18,11 +19,14 @@ const WORKER_LABELS = {
 } as const;
 
 export const WorkNode = memo(function WorkNode({
+  id,
   data,
   selected,
 }: NodeProps & { data: WorkNodeData }) {
   const colors = NODE_COLORS.work[data.workerType];
   const Icon = WORKER_ICONS[data.workerType];
+  const plCount = useParkingLotStore(selectUnresolvedParkingLotCountForNode(id));
+  const openParkingLotForNode = useUIStore((s) => s.openParkingLotForNode);
 
   return (
     <BaseNode
@@ -34,6 +38,8 @@ export const WorkNode = memo(function WorkNode({
       showSourceHandle={true}
       aiConfidence={data.ai_confidence}
       aiGenerated={data.ai_generated}
+      parkingLotCount={plCount}
+      onParkingLotBadgeClick={() => openParkingLotForNode(id)}
     >
       <div className="flex items-start gap-2">
         <div className={`p-1.5 rounded ${colors.accent} text-white shrink-0`}>

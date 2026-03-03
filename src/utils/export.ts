@@ -180,7 +180,35 @@ export function exportToExcel(blueprint: Blueprint, filename?: string) {
     XLSX.utils.book_append_sheet(workbook, integrationDetailsSheet, 'Integration Details');
   }
 
-  // Sheet 5: Comments (if any)
+  // Sheet 5: Parking Lot (if any)
+  if (blueprint.parkingLot && blueprint.parkingLot.length > 0) {
+    const parkingLotData = [
+      ['#', 'Title', 'Status', 'Owner', 'Linked Node', 'Description', 'Resolution', 'Created', 'Resolved'],
+    ];
+
+    blueprint.parkingLot.forEach((item, index) => {
+      const linkedNode = item.linkedNodeId
+        ? blueprint.nodes.find((n) => n.id === item.linkedNodeId)?.data.name || item.linkedNodeId
+        : 'Blueprint Overall';
+
+      parkingLotData.push([
+        String(index + 1),
+        item.title,
+        item.status,
+        item.owner || '',
+        linkedNode,
+        item.description || '',
+        item.resolution || '',
+        item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '',
+        item.resolvedAt ? new Date(item.resolvedAt).toLocaleDateString() : '',
+      ]);
+    });
+
+    const parkingLotSheet = XLSX.utils.aoa_to_sheet(parkingLotData);
+    XLSX.utils.book_append_sheet(workbook, parkingLotSheet, 'Parking Lot');
+  }
+
+  // Sheet 6: Comments (if any)
   if (blueprint.comments && blueprint.comments.length > 0) {
     const commentsData = [
       ['Comment ID', 'Node ID', 'Author', 'Timestamp', 'Text', 'Resolved'],
@@ -567,6 +595,48 @@ export function exportToPDF(blueprint: Blueprint, filename?: string, canvasImage
         2: { cellWidth: 25 },
         3: { cellWidth: 80 },
         4: { cellWidth: 20 },
+      },
+    });
+  }
+
+  // Parking Lot / Open Items
+  if (blueprint.parkingLot && blueprint.parkingLot.length > 0) {
+    doc.addPage();
+    yPosition = 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Parking Lot / Open Items', 20, yPosition);
+    yPosition += 10;
+
+    const parkingLotTableData = blueprint.parkingLot.map((item) => {
+      const linkedNode = item.linkedNodeId
+        ? blueprint.nodes.find((n) => n.id === item.linkedNodeId)?.data.name || item.linkedNodeId
+        : 'Blueprint Overall';
+      return [
+        item.title,
+        item.status,
+        item.owner || '—',
+        linkedNode,
+        item.description || '—',
+        item.resolution || '—',
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Title', 'Status', 'Owner', 'Linked Node', 'Description', 'Resolution']],
+      body: parkingLotTableData,
+      theme: 'grid',
+      headStyles: { fillColor: [245, 158, 11], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 25 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 40 },
+        5: { cellWidth: 35 },
       },
     });
   }

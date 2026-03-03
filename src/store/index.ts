@@ -9,3 +9,8 @@ export {
   selectUnresolvedCommentsCount,
 } from './commentsStore';
 export { useBlueprintsLibraryStore, type BlueprintSummary } from './blueprintsLibraryStore';
+export {
+  useParkingLotStore,
+  selectUnresolvedParkingLotCount,
+  selectUnresolvedParkingLotCountForNode,
+} from './parkingLotStore';

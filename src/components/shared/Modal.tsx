@@ -52,30 +52,36 @@ export function Modal({ isOpen, onClose, title, children, maxWidth = 'md' }: Mod
   return (
     <dialog
       ref={dialogRef}
-      className={`
-        ${widthClasses[maxWidth]} w-full p-0 rounded-lg shadow-xl
-        backdrop:bg-black/50 backdrop:backdrop-blur-sm
-      `}
+      className="fixed inset-0 w-full h-full p-0 m-0 bg-transparent backdrop:bg-black/50 backdrop:backdrop-blur-sm"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
           onClose();
         }
       }}
     >
-      <div className="bg-white rounded-lg overflow-y-auto max-h-[90vh]">
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-          <button
-            onClick={onClose}
-            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+      <div
+        className="flex items-center justify-center min-h-full p-4"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) {
+            onClose();
+          }
+        }}
+      >
+        <div className={`${widthClasses[maxWidth]} w-full bg-white rounded-lg shadow-xl overflow-y-auto max-h-[90vh]`}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+            <button
+              onClick={onClose}
+              className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-        {/* Content */}
-        <div className="p-4">{children}</div>
+          {/* Content */}
+          <div className="p-4">{children}</div>
+        </div>
       </div>
     </dialog>
   );

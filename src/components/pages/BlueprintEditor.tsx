@@ -14,7 +14,9 @@ import { ExportDialog } from '../dialogs/ExportDialog';
 import { ImportDialog } from '../dialogs/ImportDialog';
 import { SaveLoadDialog } from '../dialogs/SaveLoadDialog';
 import { SmartImportDialog, ApiKeySettings } from '../../features/smartImport';
-import { useUIStore, useBlueprintStore, useNodesStore, useEdgesStore, useCommentsStore } from '../../store';
+import { ParkingLotPanel } from '../panels/ParkingLotPanel';
+import { ParkingLotItemDialog } from '../dialogs/ParkingLotItemDialog';
+import { useUIStore, useBlueprintStore, useNodesStore, useEdgesStore, useCommentsStore, useParkingLotStore } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 
 function BlueprintEditorContent() {
@@ -50,6 +52,8 @@ function BlueprintEditorContent() {
   const setEdges = useEdgesStore((state) => state.setEdges);
   const comments = useCommentsStore((state) => state.comments);
   const setComments = useCommentsStore((state) => state.setComments);
+  const parkingLotItems = useParkingLotStore((state) => state.items);
+  const setParkingLotItems = useParkingLotStore((state) => state.setItems);
 
   // Load blueprint on mount
   useEffect(() => {
@@ -92,6 +96,7 @@ function BlueprintEditorContent() {
     setNodes(appNodes);
     setEdges(blueprint.edges);
     setComments(blueprint.comments);
+    setParkingLotItems(blueprint.parkingLot || []);
 
     // Mark as initialized after a short delay to avoid immediate save
     setTimeout(() => {
@@ -116,6 +121,7 @@ function BlueprintEditorContent() {
 
     const currentEdges = useEdgesStore.getState().edges;
     const currentComments = useCommentsStore.getState().comments;
+    const currentParkingLot = useParkingLotStore.getState().items;
     const blueprintState = useBlueprintStore.getState();
 
     updateBlueprint(blueprintId, {
@@ -136,6 +142,7 @@ function BlueprintEditorContent() {
       nodes: serializedNodes,
       edges: currentEdges,
       comments: currentComments,
+      parkingLot: currentParkingLot,
     });
   }, [blueprintId, updateBlueprint]);
 
@@ -143,11 +150,11 @@ function BlueprintEditorContent() {
   useEffect(() => {
     if (!blueprintId || !isInitialized.current) return;
 
-    const saveTimeout = setTimeout(saveToLibrary, 1000);
+    const saveTimeout = setTimeout(saveToLibrary, 3000);
     return () => clearTimeout(saveTimeout);
   }, [blueprintId, saveToLibrary, id, title, description, impactedAudiences, businessBenefits,
       clientContacts, createdBy, lastModifiedBy, lastModifiedDate, version, status, changeLog,
-      nodes, edges, comments]);
+      nodes, edges, comments, parkingLotItems]);
 
   return (
     <>
@@ -164,6 +171,8 @@ function BlueprintEditorContent() {
       <SaveLoadDialog />
       <SmartImportDialog />
       <ApiKeySettings />
+      <ParkingLotPanel />
+      <ParkingLotItemDialog />
     </>
   );
 }

@@ -4,12 +4,16 @@ import { GitBranch } from 'lucide-react';
 import { BaseNode } from './BaseNode';
 import type { DecisionNodeData } from '../../types';
 import { NODE_COLORS } from '../../constants';
+import { useParkingLotStore, selectUnresolvedParkingLotCountForNode, useUIStore } from '../../store';
 
 export const DecisionNode = memo(function DecisionNode({
+  id,
   data,
   selected,
 }: NodeProps & { data: DecisionNodeData }) {
   const colors = NODE_COLORS.decision;
+  const plCount = useParkingLotStore(selectUnresolvedParkingLotCountForNode(id));
+  const openParkingLotForNode = useUIStore((s) => s.openParkingLotForNode);
 
   // Use conditions from data, or default to empty array
   const conditions = data.conditions || [];
@@ -69,6 +73,8 @@ export const DecisionNode = memo(function DecisionNode({
       decisionConditions={conditions}
       aiConfidence={data.ai_confidence}
       aiGenerated={data.ai_generated}
+      parkingLotCount={plCount}
+      onParkingLotBadgeClick={() => openParkingLotForNode(id)}
     >
       {/* Dynamic condition labels */}
       {conditions.map((condition, index) => {

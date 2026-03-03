@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from 'react';
 import { Handle, Position } from '@xyflow/react';
 import type { AIConfidence, DecisionCondition } from '../../types/nodes';
+import { ParkingLotBadge } from '../shared/ParkingLotBadge';
 
 interface BaseNodeProps {
   children: ReactNode;
@@ -13,6 +14,8 @@ interface BaseNodeProps {
   decisionConditions?: DecisionCondition[];
   aiConfidence?: AIConfidence;
   aiGenerated?: boolean;
+  parkingLotCount?: number;
+  onParkingLotBadgeClick?: () => void;
 }
 
 const handleStyle = "!w-3 !h-3 !border-2 !border-white";
@@ -35,6 +38,8 @@ export const BaseNode = memo(function BaseNode({
   decisionConditions,
   aiConfidence,
   aiGenerated,
+  parkingLotCount,
+  onParkingLotBadgeClick,
 }: BaseNodeProps) {
   // Determine ring style: selection takes precedence over confidence
   const confidenceRing = aiGenerated && aiConfidence && !selected
@@ -59,6 +64,11 @@ export const BaseNode = memo(function BaseNode({
         ${selected ? 'shadow-lg ring-2 ring-blue-400 ring-offset-2' : confidenceRing}
       `}
     >
+      {/* Parking lot badge */}
+      {parkingLotCount != null && parkingLotCount > 0 && onParkingLotBadgeClick && (
+        <ParkingLotBadge count={parkingLotCount} onClick={onParkingLotBadgeClick} />
+      )}
+
       {/* Accent bar at top */}
       <div className={`h-1 rounded-t-md ${accentColor}`} />
 

@@ -36,6 +36,7 @@ export interface Blueprint extends BlueprintMetadata {
   nodes: SerializedNode[];
   edges: import('./edges').BlueprintEdge[];
   comments: import('./comments').Comment[];
+  parkingLot: import('./parkingLot').ParkingLotItem[];
 }
 
 export interface BlueprintExport {

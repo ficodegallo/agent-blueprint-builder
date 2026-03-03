@@ -51,6 +51,7 @@ function isValidBlueprint(blueprint: unknown): blueprint is Blueprint {
 function normalizeEdges(blueprint: Blueprint): Blueprint {
   return {
     ...blueprint,
+    parkingLot: blueprint.parkingLot || [],
     edges: blueprint.edges.map((edge) => ({
       ...edge,
       // Ensure edge has customBezier type if not specified

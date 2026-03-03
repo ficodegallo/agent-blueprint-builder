@@ -4,12 +4,16 @@ import { CircleStop } from 'lucide-react';
 import { BaseNode } from './BaseNode';
 import type { EndNodeData } from '../../types';
 import { NODE_COLORS } from '../../constants';
+import { useParkingLotStore, selectUnresolvedParkingLotCountForNode, useUIStore } from '../../store';
 
 export const EndNode = memo(function EndNode({
+  id,
   data,
   selected,
 }: NodeProps & { data: EndNodeData }) {
   const colors = NODE_COLORS.end;
+  const plCount = useParkingLotStore(selectUnresolvedParkingLotCountForNode(id));
+  const openParkingLotForNode = useUIStore((s) => s.openParkingLotForNode);
 
   return (
     <BaseNode
@@ -21,6 +25,8 @@ export const EndNode = memo(function EndNode({
       showSourceHandle={false}
       aiConfidence={data.ai_confidence}
       aiGenerated={data.ai_generated}
+      parkingLotCount={plCount}
+      onParkingLotBadgeClick={() => openParkingLotForNode(id)}
     >
       <div className="flex items-start gap-2">
         <div className={`p-1.5 rounded ${colors.accent} text-white shrink-0`}>

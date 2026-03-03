@@ -20,6 +20,7 @@ export function createDefaultBlueprint(): Blueprint {
     nodes: [],
     edges: [],
     comments: [],
+    parkingLot: [],
   };
 }
 

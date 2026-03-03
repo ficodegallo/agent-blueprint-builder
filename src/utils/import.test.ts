@@ -53,6 +53,7 @@ function createValidBlueprint(): Blueprint {
       },
     ],
     comments: [],
+    parkingLot: [],
   };
 }
 

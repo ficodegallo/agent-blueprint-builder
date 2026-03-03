@@ -163,6 +163,7 @@ function convertToBlueprint(response: ClaudeResponse): Blueprint {
     nodes,
     edges,
     comments: [],
+    parkingLot: [],
   };
 }
 

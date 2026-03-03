@@ -3,3 +3,4 @@ export * from './blueprint';
 export * from './nodes';
 export * from './edges';
 export * from './comments';
+export * from './parkingLot';
