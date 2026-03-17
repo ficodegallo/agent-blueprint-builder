@@ -60,6 +60,25 @@ interface BPWarning {
   nodeName: string | null;
 }
 
+/**
+ * Hook for AI-powered best practices compliance analysis.
+ *
+ * Serializes the current blueprint into a text description and sends it to
+ * Claude Sonnet along with user-defined best practices text. Returns a list of
+ * violations formatted as ValidationIssue[] so they can be displayed alongside
+ * standard validation errors in the ValidationPanel.
+ *
+ * Requires best practices text to be configured via bestPracticesStorage and
+ * a Claude API key to be set in Smart Import settings.
+ *
+ * @returns {{
+ *   analyzeBestPractices: (nodes: AppNode[], edges: BlueprintEdge[]) => Promise<void>,
+ *   isAnalyzing: boolean,
+ *   warnings: ValidationIssue[],
+ *   error: string | null,
+ *   clearWarnings: () => void
+ * }}
+ */
 export function useBestPracticesAnalysis() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [warnings, setWarnings] = useState<ValidationIssue[]>([]);

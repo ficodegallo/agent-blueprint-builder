@@ -49,7 +49,7 @@ src/
 
 - `src/App.tsx` - React Router setup with HomePage and BlueprintEditor routes
 - `src/store/nodesStore.ts` - Central node state with React Flow integration
-- `src/store/blueprintsLibraryStore.ts` - Multi-blueprint library management with localStorage persistence
+- `src/store/blueprintsLibraryStore.ts` - Multi-blueprint library management with two-tier persistence (localStorage + Supabase background sync)
 - `src/components/canvas/BlueprintCanvas.tsx` - Main canvas with drag-drop support and auto-center to first trigger
 - `src/components/pages/HomePage.tsx` - Blueprint library landing page with search and cards
 - `src/components/pages/BlueprintEditor.tsx` - Main editor with auto-save to library
@@ -476,11 +476,11 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 - `IOItem` type: `{ name: string; required: boolean }` for inputs/outputs
 - **Integration Migration**: Union type `Array<string | IntegrationDetail>` supports backward compatibility
   - `migrateIntegrations()` auto-converts old string[] to new detailed format
-  - Migration happens transparently on read (DetailPanel, export utilities)
+  - Migration happens on read in `WorkNodePanel` (via `useMemo`) and in export utilities — not in stores, and not persisted until the user saves a change
 - Comments are stored per-node and included in exports
 - Blueprint metadata includes version, status, change log
 - Detail panel width: 512px (w-[32rem]) - 33% wider for better task visibility
-- **Auto-save**: 1s debounce to library store (previously 2s to localStorage)
+- **Auto-save**: 1s debounce to library store, which persists to localStorage and syncs to Supabase in the background
 - **Auto-center**: Canvas automatically centers on first trigger node on blueprint load
 - **Task Management**: ListEditor uses @hello-pangea/dnd for drag-and-drop, useTaskAutoOrder hook for AI reordering
 

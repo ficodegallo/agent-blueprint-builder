@@ -18,6 +18,23 @@ interface DiscoverApisParams {
   outputs: IOItem[];
 }
 
+/**
+ * Hook for AI-powered API endpoint discovery for integrations.
+ *
+ * Given an integration name and work node context, calls Claude Opus to suggest
+ * 2–5 relevant API endpoints with rich metadata (parameters, response fields,
+ * auth type, rate limits, documentation URLs). Results include a confidence
+ * level (high/medium/low) per endpoint.
+ *
+ * @returns {{
+ *   discoverApis: (params: DiscoverApisParams) => Promise<ApiEndpoint[] | null>,
+ *   isDiscovering: boolean,
+ *   discoveredEndpoints: ApiEndpoint[],
+ *   error: string | null,
+ *   clearError: () => void,
+ *   clearDiscoveries: () => void
+ * }}
+ */
 export function useApiDiscovery() {
   const [isDiscovering, setIsDiscovering] = useState(false);
   const [discoveredEndpoints, setDiscoveredEndpoints] = useState<ApiEndpoint[]>([]);

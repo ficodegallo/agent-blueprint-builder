@@ -4,6 +4,14 @@ import { useLocalStorage } from './useLocalStorage';
 
 const AUTO_SAVE_DELAY = 2000; // 2 seconds
 
+/**
+ * Hook that automatically saves the current blueprint to localStorage whenever
+ * any tracked state changes, debounced by AUTO_SAVE_DELAY (2 seconds).
+ *
+ * Subscribes to nodes, edges, comments, and blueprint metadata fields. The
+ * debounce prevents excessive writes during rapid edits. Mount this hook once
+ * in BlueprintEditor — it has no return value.
+ */
 export function useAutoSave() {
   const { saveCurrentBlueprint } = useLocalStorage();
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

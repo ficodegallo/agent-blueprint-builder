@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList } from 'lucide-react';
 import { useBlueprintStore, useUIStore, useParkingLotStore, selectUnresolvedParkingLotCount } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
@@ -18,6 +18,8 @@ interface HeaderProps {
 
 export function Header({ showBackButton = false }: HeaderProps) {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const fromBlueprintId = searchParams.get('from');
   const title = useBlueprintStore((state) => state.title);
   const status = useBlueprintStore((state) => state.status);
   const openDialog = useUIStore((state) => state.openDialog);
@@ -26,6 +28,8 @@ export function Header({ showBackButton = false }: HeaderProps) {
 
   const syncStatus = useBlueprintsLibraryStore((state) => state.syncStatus);
   const retrySyncPending = useBlueprintsLibraryStore((state) => state.retrySyncPending);
+  const getBlueprint = useBlueprintsLibraryStore((state) => state.getBlueprint);
+  const parentBlueprint = fromBlueprintId ? getBlueprint(fromBlueprintId) : undefined;
 
   const sync = syncConfig[syncStatus];
 
@@ -41,11 +45,16 @@ export function Header({ showBackButton = false }: HeaderProps) {
       <div className="flex items-center gap-4">
         {showBackButton && (
           <button
-            onClick={() => navigate('/')}
+            onClick={() => parentBlueprint
+              ? navigate(`/blueprint/${fromBlueprintId}`)
+              : navigate('/')}
             className="flex items-center gap-1.5 px-2 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors"
+            title={parentBlueprint ? `Back to ${parentBlueprint.title}` : 'Back to Home'}
           >
             <ArrowLeft className="w-4 h-4" />
-            <span className="hidden sm:inline">Home</span>
+            <span className="hidden sm:inline truncate max-w-[140px]">
+              {parentBlueprint ? parentBlueprint.title : 'Home'}
+            </span>
           </button>
         )}
         <div className="flex items-center gap-2">

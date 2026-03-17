@@ -14,18 +14,29 @@ interface AutoOrderParams {
   outputs: Array<{ name: string; required: boolean }>;
 }
 
+/**
+ * Hook for AI-powered task reordering within a work node.
+ *
+ * Sends the node's goal, inputs, outputs, and current task list to Claude Opus
+ * and returns them in optimal execution order. Task count is validated to ensure
+ * no tasks are added or removed by the AI.
+ *
+ * @returns {{
+ *   autoOrderTasks: (params: AutoOrderParams) => Promise<string[] | null>,
+ *   isOrdering: boolean,
+ *   error: string | null,
+ *   clearError: () => void
+ * }}
+ */
 export function useTaskAutoOrder() {
   const [isOrdering, setIsOrdering] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const autoOrderTasks = useCallback(async (params: AutoOrderParams): Promise<string[] | null> => {
-    console.log('Auto-order started with params:', params);
-
     const apiKey = getApiKey();
 
     if (!apiKey) {
       const errorMsg = 'API key not found. Please configure your Claude API key in the Smart Import settings.';
-      console.error(errorMsg);
       setError(errorMsg);
       return null;
     }
@@ -48,8 +59,6 @@ export function useTaskAutoOrder() {
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
-
-    console.log('Sending API request to Claude...');
 
     try {
       const response = await fetch(API_URL, {
@@ -76,20 +85,14 @@ export function useTaskAutoOrder() {
 
       clearTimeout(timeoutId);
 
-      console.log('API response status:', response.status);
-
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         const errorMsg = errorData.error?.message || `API request failed: ${response.status}`;
-        console.error('API error:', errorMsg, errorData);
         throw new Error(errorMsg);
       }
 
       const data = await response.json();
-      console.log('API response data:', data);
-
       const content = data.content?.[0]?.text;
-      console.log('Extracted content:', content);
 
       if (!content) {
         throw new Error('No content in API response');
@@ -98,21 +101,16 @@ export function useTaskAutoOrder() {
       // Extract JSON array from response
       const jsonMatch = content.match(/\[[\s\S]*\]/);
       if (!jsonMatch) {
-        console.error('Could not find JSON array in content:', content);
         throw new Error('Could not extract JSON array from response');
       }
 
-      console.log('Extracted JSON:', jsonMatch[0]);
       const reorderedTasks = JSON.parse(jsonMatch[0]) as string[];
-      console.log('Parsed reordered tasks:', reorderedTasks);
 
       // Validate that we got the same tasks back
       if (reorderedTasks.length !== params.tasks.length) {
-        console.error('Task count mismatch. Original:', params.tasks.length, 'Reordered:', reorderedTasks.length);
         throw new Error('Reordered tasks count does not match original');
       }
 
-      console.log('Auto-order successful!');
       setIsOrdering(false);
       return reorderedTasks;
     } catch (err) {

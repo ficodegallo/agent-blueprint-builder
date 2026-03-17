@@ -27,6 +27,8 @@ export interface AIFeatureConfig {
 const STORAGE_PREFIX = 'blueprint-builder:ai-prompts:';
 const OLD_SMART_IMPORT_KEY = 'blueprint-builder:smart-import-prompts';
 
+const MAX_PROMPT_LENGTH = 20000; // ~20KB per prompt field
+
 // ── Feature Configs ──────────────────────────────────────────────────
 
 export function getFeatureConfigs(): AIFeatureConfig[] {
@@ -386,6 +388,12 @@ export function loadCustomPrompts(feature: AIFeatureKey): AIFeaturePrompts | nul
 }
 
 export function saveCustomPrompts(feature: AIFeatureKey, prompts: AIFeaturePrompts): void {
+  if (prompts.systemPrompt.length > MAX_PROMPT_LENGTH) {
+    throw new Error(`System prompt exceeds maximum length of ${MAX_PROMPT_LENGTH} characters`);
+  }
+  if (prompts.userPromptTemplate.length > MAX_PROMPT_LENGTH) {
+    throw new Error(`User prompt template exceeds maximum length of ${MAX_PROMPT_LENGTH} characters`);
+  }
   try {
     const toSave = {
       ...prompts,

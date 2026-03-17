@@ -21,6 +21,22 @@ interface EvaluateGoalParams {
   outputs: Array<{ name: string; required: boolean }>;
 }
 
+/**
+ * Hook for AI-powered goal evaluation and optimization.
+ *
+ * Evaluates a work node's goal text against best practices (outcome focus,
+ * specificity, business value) using Claude Opus and returns a rated suggestion.
+ * Editing the goal field should call clearSuggestion to dismiss stale results.
+ *
+ * @returns {{
+ *   evaluateGoal: (params: EvaluateGoalParams) => Promise<GoalEvaluation | null>,
+ *   isEvaluating: boolean,
+ *   suggestedGoal: GoalEvaluation | null,
+ *   error: string | null,
+ *   clearError: () => void,
+ *   clearSuggestion: () => void
+ * }}
+ */
 export function useGoalEvaluate() {
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [suggestedGoal, setSuggestedGoal] = useState<GoalEvaluation | null>(null);

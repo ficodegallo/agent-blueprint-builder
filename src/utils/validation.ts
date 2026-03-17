@@ -35,11 +35,13 @@ const WARNING_CODES = {
   EMPTY_TASKS: 'W003',
   FEW_DECISION_BRANCHES: 'W004',
   LONG_CHAIN: 'W005',
+  BROKEN_WORKFLOW_LINK: 'W006',
 } as const;
 
 export function validateBlueprint(
   nodes: AppNode[],
-  edges: BlueprintEdge[]
+  edges: BlueprintEdge[],
+  existingBlueprintIds?: Set<string>
 ): ValidationResult {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
@@ -168,6 +170,21 @@ export function validateBlueprint(
           severity: 'warning',
           code: WARNING_CODES.FEW_DECISION_BRANCHES,
           message: `Decision node "${node.data.name}" has fewer than 2 branches`,
+          nodeId: node.id,
+          nodeName: node.data.name,
+        });
+      }
+    }
+
+    // Workflow node: check for broken cross-blueprint link
+    if (node.data.nodeType === 'workflow' && existingBlueprintIds) {
+      const wfId = (node.data as Record<string, unknown>).workflowId as string | undefined;
+      if (wfId && !existingBlueprintIds.has(wfId)) {
+        warnings.push({
+          id: `${WARNING_CODES.BROKEN_WORKFLOW_LINK}-${node.id}`,
+          severity: 'warning',
+          code: WARNING_CODES.BROKEN_WORKFLOW_LINK,
+          message: `"${node.data.name}" references a blueprint that no longer exists`,
           nodeId: node.id,
           nodeName: node.data.name,
         });

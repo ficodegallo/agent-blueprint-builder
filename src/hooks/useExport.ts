@@ -4,6 +4,21 @@ import { downloadJSON, exportToExcel, exportToPDF } from '../utils/export';
 import { exportToWord } from '../utils/exportWord';
 import { captureFullCanvas } from '../utils/canvasExport';
 
+/**
+ * Hook that provides blueprint export actions.
+ *
+ * Each export function reads the current blueprint from the store via
+ * useLocalStorage and triggers a browser download in the appropriate format.
+ * exportPDF and exportWord additionally capture the React Flow canvas as a PNG
+ * before generating the document.
+ *
+ * @returns {{
+ *   exportJSON: () => void,
+ *   exportExcel: () => void,
+ *   exportPDF: () => Promise<void>,
+ *   exportWord: () => Promise<void>
+ * }}
+ */
 export function useExport() {
   const { getCurrentBlueprint } = useLocalStorage();
 

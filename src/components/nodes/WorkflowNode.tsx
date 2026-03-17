@@ -1,10 +1,11 @@
 import { memo } from 'react';
 import type { NodeProps } from '@xyflow/react';
-import { Workflow } from 'lucide-react';
+import { Workflow, AlertCircle } from 'lucide-react';
 import { BaseNode } from './BaseNode';
 import type { WorkflowNodeData } from '../../types';
 import { NODE_COLORS } from '../../constants';
 import { useParkingLotStore, selectUnresolvedParkingLotCountForNode, useUIStore } from '../../store';
+import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 
 export const WorkflowNode = memo(function WorkflowNode({
   id,
@@ -14,6 +15,8 @@ export const WorkflowNode = memo(function WorkflowNode({
   const colors = NODE_COLORS.workflow;
   const plCount = useParkingLotStore(selectUnresolvedParkingLotCountForNode(id));
   const openParkingLotForNode = useUIStore((s) => s.openParkingLotForNode);
+  const getBlueprint = useBlueprintsLibraryStore((s) => s.getBlueprint);
+  const hasBrokenLink = data.workflowId ? !getBlueprint(data.workflowId) : false;
 
   return (
     <BaseNode
@@ -48,6 +51,12 @@ export const WorkflowNode = memo(function WorkflowNode({
           {data.description && (
             <div className="text-xs text-gray-500 mt-1 line-clamp-2">
               {data.description}
+            </div>
+          )}
+          {hasBrokenLink && (
+            <div className="flex items-center gap-1 mt-1 text-xs text-amber-600" title="Referenced blueprint no longer exists">
+              <AlertCircle size={11} />
+              <span>Broken link</span>
             </div>
           )}
         </div>

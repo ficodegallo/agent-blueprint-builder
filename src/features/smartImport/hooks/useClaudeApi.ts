@@ -76,16 +76,8 @@ export function useClaudeApi() {
         };
       }
 
-      console.log('API key validated (length:', apiKey.length, ')');
-
       const userPrompt = buildUserPrompt(extractedContent, options);
       const systemPrompt = getActiveSystemPrompt();
-
-      console.log('Building Claude request...');
-      console.log('User prompt length:', userPrompt.length);
-      console.log('System prompt length:', systemPrompt.length);
-      console.log('Model:', SMART_IMPORT_CONFIG.MODEL);
-      console.log('Max tokens:', SMART_IMPORT_CONFIG.MAX_TOKENS);
 
       onProgress?.('Sending request to Claude...');
 
@@ -93,11 +85,9 @@ export function useClaudeApi() {
       const controller = new AbortController();
       const actualTimeout = 90000; // 90 seconds instead of 120
       const timeoutId = setTimeout(() => {
-        console.error('Claude API timeout after', actualTimeout / 1000, 'seconds - aborting request');
         controller.abort();
       }, actualTimeout);
 
-      console.log('Sending request to Claude API...');
       const requestBody = {
         model: SMART_IMPORT_CONFIG.MODEL,
         max_tokens: SMART_IMPORT_CONFIG.MAX_TOKENS,
@@ -110,10 +100,7 @@ export function useClaudeApi() {
         ],
       };
 
-      console.log('Request body size:', JSON.stringify(requestBody).length, 'bytes');
-
       try {
-        const fetchStartTime = Date.now();
         const response = await fetch(SMART_IMPORT_CONFIG.API_URL, {
           method: 'POST',
           headers: {
@@ -126,14 +113,9 @@ export function useClaudeApi() {
           signal: controller.signal,
         });
 
-        const fetchDuration = Date.now() - fetchStartTime;
-        console.log('Fetch completed in', fetchDuration, 'ms');
-
         clearTimeout(timeoutId);
-        console.log('Received response from Claude API, status:', response.status);
 
         if (!response.ok) {
-          console.error('Claude API returned error status:', response.status);
           // Handle specific error codes
           if (response.status === 401) {
             throw new ClaudeApiError(
@@ -172,11 +154,9 @@ export function useClaudeApi() {
           );
         }
 
-        console.log('Parsing JSON response...');
         onProgress?.('Processing response...');
 
         const data = await response.json();
-        console.log('Response parsed successfully');
 
         // Extract content from response
         if (
@@ -184,12 +164,10 @@ export function useClaudeApi() {
           Array.isArray(data.content) &&
           data.content.length > 0
         ) {
-          console.log('Found content array with', data.content.length, 'items');
           const textContent = data.content.find(
             (c: Record<string, unknown>) => c.type === 'text'
           );
           if (textContent && textContent.text) {
-            console.log('Successfully extracted text content, length:', textContent.text.length);
             return {
               success: true,
               content: textContent.text,
@@ -197,14 +175,12 @@ export function useClaudeApi() {
           }
         }
 
-        console.error('Unexpected response format - no text content found');
         return {
           success: false,
           error: 'Unexpected response format from Claude API',
         };
       } catch (error) {
         clearTimeout(timeoutId);
-        console.error('Claude API call exception:', error);
 
         if (error instanceof ClaudeApiError) {
           return {

@@ -31,6 +31,25 @@ function deserializeNodes(nodes: SerializedNode[]): AppNode[] {
   }));
 }
 
+/**
+ * Hook providing low-level blueprint persistence to localStorage.
+ *
+ * Coordinates reading and writing across all Zustand stores (blueprint, nodes,
+ * edges, comments, parking lot) as a single serialized Blueprint object.
+ * Used internally by useAutoSave, useExport, and useImport.
+ *
+ * @returns {{
+ *   getCurrentBlueprint: () => Blueprint,
+ *   saveCurrentBlueprint: () => void,
+ *   loadCurrentBlueprint: () => boolean,
+ *   loadBlueprint: (blueprint: Blueprint) => void,
+ *   saveNamedBlueprint: (name?: string) => void,
+ *   loadNamedBlueprint: (id: string) => boolean,
+ *   deleteNamedBlueprint: (id: string) => void,
+ *   getSavedBlueprintsList: () => SavedBlueprintSummary[],
+ *   createNewBlueprint: () => void
+ * }}
+ */
 export function useLocalStorage() {
   const blueprintStore = useBlueprintStore();
   const nodesStore = useNodesStore();
