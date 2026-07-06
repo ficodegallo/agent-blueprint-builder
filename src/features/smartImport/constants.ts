@@ -1,5 +1,6 @@
 import type { SmartImportOptions } from './types';
 import { getActivePrompts } from './utils/promptStorage';
+import { AI_FEATURE_MODELS, ANTHROPIC_API_URL } from '../../constants/aiModels';
 
 // API Configuration
 export const SMART_IMPORT_CONFIG = {
@@ -16,8 +17,8 @@ export const SMART_IMPORT_CONFIG = {
   ] as const,
 
   // API settings
-  API_URL: 'https://api.anthropic.com/v1/messages',
-  MODEL: 'claude-sonnet-4-20250514',
+  API_URL: ANTHROPIC_API_URL,
+  MODEL: AI_FEATURE_MODELS.smartImport,
   MAX_TOKENS: 8192,
   TIMEOUT_MS: 120000, // 2 minutes
 

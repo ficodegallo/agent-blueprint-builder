@@ -6,8 +6,9 @@ import type { AppNode } from '../store/nodesStore';
 import type { BlueprintEdge } from '../types';
 import type { ValidationIssue } from '../utils/validation';
 
-const API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-sonnet-4-5-20250929';
+import { AI_FEATURE_MODELS, ANTHROPIC_API_URL as API_URL } from '../constants/aiModels';
+
+const MODEL = AI_FEATURE_MODELS.bestPracticesAnalysis;
 const MAX_TOKENS = 4000;
 const TIMEOUT_MS = 60000;
 
