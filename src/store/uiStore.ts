@@ -24,6 +24,7 @@ interface UIState {
   isHeaderExpanded: boolean;
   isParkingLotOpen: boolean;
   parkingLotNodeFilter: string | null;
+  isInterviewerOpen: boolean;
 
   // Dialogs
   activeDialog: DialogType;
@@ -42,6 +43,8 @@ interface UIState {
   toggleParkingLot: () => void;
   closeParkingLot: () => void;
   openParkingLotForNode: (nodeId: string) => void;
+  toggleInterviewer: () => void;
+  closeInterviewer: () => void;
 
   setDetailPanelOpen: (open: boolean) => void;
   setTemplatePanelOpen: (open: boolean) => void;
@@ -64,6 +67,7 @@ export const useUIStore = create<UIState>((set) => ({
   isHeaderExpanded: false,
   isParkingLotOpen: false,
   parkingLotNodeFilter: null,
+  isInterviewerOpen: false,
   activeDialog: null,
   editingParkingLotItemId: null,
 
@@ -119,6 +123,11 @@ export const useUIStore = create<UIState>((set) => ({
 
   openParkingLotForNode: (nodeId) =>
     set({ isParkingLotOpen: true, parkingLotNodeFilter: nodeId }),
+
+  toggleInterviewer: () =>
+    set((state) => ({ isInterviewerOpen: !state.isInterviewerOpen })),
+
+  closeInterviewer: () => set({ isInterviewerOpen: false }),
 
   // Panel set actions
   setDetailPanelOpen: (open) => set({ isDetailPanelOpen: open }),

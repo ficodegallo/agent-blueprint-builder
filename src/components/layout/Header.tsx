@@ -1,5 +1,5 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList } from 'lucide-react';
+import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList, MessageCircleQuestion } from 'lucide-react';
 import { useBlueprintStore, useUIStore, useParkingLotStore, selectUnresolvedParkingLotCount } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 import type { SyncStatus } from '../../services/blueprintStorage';
@@ -24,6 +24,7 @@ export function Header({ showBackButton = false }: HeaderProps) {
   const status = useBlueprintStore((state) => state.status);
   const openDialog = useUIStore((state) => state.openDialog);
   const toggleParkingLot = useUIStore((state) => state.toggleParkingLot);
+  const toggleInterviewer = useUIStore((state) => state.toggleInterviewer);
   const unresolvedCount = useParkingLotStore(selectUnresolvedParkingLotCount);
 
   const syncStatus = useBlueprintsLibraryStore((state) => state.syncStatus);
@@ -100,6 +101,13 @@ export function Header({ showBackButton = false }: HeaderProps) {
         >
           <Sparkles className="w-4 h-4" />
           Smart Import
+        </button>
+        <button
+          onClick={toggleInterviewer}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 transition-colors"
+        >
+          <MessageCircleQuestion className="w-4 h-4" />
+          Interview
         </button>
         <button
           onClick={toggleParkingLot}
