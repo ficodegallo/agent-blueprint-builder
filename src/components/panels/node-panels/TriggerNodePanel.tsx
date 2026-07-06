@@ -1,5 +1,5 @@
 import type { AppNode } from '../../../store/nodesStore';
-import type { NodeData } from '../../../types';
+import type { NodeData, TriggerNodeData, TriggerType } from '../../../types';
 
 interface Props {
   node: AppNode;
@@ -7,14 +7,14 @@ interface Props {
 }
 
 export function TriggerNodePanel({ node, updateNode }: Props) {
-  const data = node.data;
+  const data = node.data as TriggerNodeData;
   return (
     <>
       <div className="mb-4">
         <label className="block text-sm font-medium text-gray-700 mb-1">Trigger Type</label>
         <select
           value={data.triggerType}
-          onChange={(e) => updateNode(node.id, { triggerType: e.target.value })}
+          onChange={(e) => updateNode(node.id, { triggerType: e.target.value as TriggerType })}
           className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         >
           <option value="event">Event</option>

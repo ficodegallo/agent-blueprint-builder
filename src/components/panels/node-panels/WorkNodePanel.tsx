@@ -11,7 +11,8 @@ import { useTaskAutoOrder } from '../../../hooks/useTaskAutoOrder';
 import { useGoalEvaluate } from '../../../hooks/useGoalEvaluate';
 import { migrateIntegrations, type IntegrationDetail, type ApiEndpoint, type IOItem } from '../../../types';
 import type { AppNode } from '../../../store/nodesStore';
-import type { NodeData } from '../../../types';
+import type { NodeData, WorkNodeData } from '../../../types';
+import type { DialogType } from '../../../store/uiStore';
 
 interface IncomingEdge {
   source: string;
@@ -22,11 +23,11 @@ interface Props {
   updateNode: (id: string, data: Partial<NodeData>) => void;
   incomingEdges: IncomingEdge[];
   getNode: (id: string) => AppNode | undefined;
-  openDialog: (dialog: string) => void;
+  openDialog: (dialog: DialogType) => void;
 }
 
 export function WorkNodePanel({ node, updateNode, incomingEdges, getNode, openDialog }: Props) {
-  const data = node.data;
+  const data = node.data as WorkNodeData;
 
   // Integration dialog state
   const [editingIntegration, setEditingIntegration] = useState<{

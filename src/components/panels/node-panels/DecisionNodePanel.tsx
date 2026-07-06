@@ -1,6 +1,6 @@
 import { Plus, X } from 'lucide-react';
 import type { AppNode } from '../../../store/nodesStore';
-import type { NodeData } from '../../../types';
+import type { DecisionNodeData, NodeData } from '../../../types';
 
 interface Props {
   node: AppNode;
@@ -8,7 +8,7 @@ interface Props {
 }
 
 export function DecisionNodePanel({ node, updateNode }: Props) {
-  const data = node.data;
+  const data = node.data as DecisionNodeData;
   return (
     <>
       <div className="mb-4">

@@ -1,5 +1,16 @@
 import { create } from 'zustand';
 
+export type DialogType =
+  | 'export'
+  | 'import'
+  | 'saveLoad'
+  | 'newBlueprint'
+  | 'smartImport'
+  | 'apiKeySettings'
+  | 'aiPromptAdmin'
+  | 'parkingLotItem'
+  | null;
+
 interface UIState {
   // Selection state
   selectedNodeId: string | null;
@@ -15,7 +26,7 @@ interface UIState {
   parkingLotNodeFilter: string | null;
 
   // Dialogs
-  activeDialog: 'export' | 'import' | 'saveLoad' | 'newBlueprint' | 'smartImport' | 'apiKeySettings' | 'aiPromptAdmin' | 'parkingLotItem' | null;
+  activeDialog: DialogType;
   editingParkingLotItemId: string | null;
 
   // Actions

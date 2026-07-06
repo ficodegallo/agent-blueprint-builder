@@ -1,5 +1,5 @@
 import type { AppNode } from '../../../store/nodesStore';
-import type { NodeData } from '../../../types';
+import type { EndNodeData, NodeData } from '../../../types';
 
 interface Props {
   node: AppNode;
@@ -7,7 +7,7 @@ interface Props {
 }
 
 export function EndNodePanel({ node, updateNode }: Props) {
-  const data = node.data;
+  const data = node.data as EndNodeData;
   return (
     <>
       <div className="mb-4">
