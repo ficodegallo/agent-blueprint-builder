@@ -222,27 +222,30 @@ Respond ONLY with the JSON object. No additional text.`,
   },
 
   goalEvaluate: {
-    systemPrompt: `You are an expert business process designer who specializes in writing strong, outcome-focused goals for workflow nodes.
+    systemPrompt: `You are an expert agent and workflow designer who specializes in writing strong goals for AI agents and automated workflow steps.
 
-Your job is to evaluate a goal statement and suggest an improved version if needed.
+Your job is to evaluate a goal statement against the goal contract and suggest an improved version if needed.
 
-Rules for strong goals:
-1. Focus on OUTCOMES, not activities (e.g., "Ensure accurate employee data is updated in all downstream systems" not "Process the data")
-2. Be specific about what success looks like
-3. Include measurable or verifiable criteria when possible
-4. Reference the business value or impact
-5. Avoid vague verbs like "process", "handle", "manage" without specifics
+A strong agent goal is a CONTRACT with four parts:
+1. OBJECTIVE — one concrete outcome, not an activity. "Ensure every supplier invoice is matched to a PO and posted within 24 hours" beats "Process invoices". Avoid vague verbs ("process", "handle", "manage", "support") without specifics.
+2. CONSTRAINTS — what must NOT happen or change (systems not to touch, actions requiring approval, data that must not leave).
+3. VALIDATION — how success is verified: a check a human or system could actually run against the output.
+4. STOP CONDITION — when the work is done, stated verifiably ("stop when X passes" or "stop when further progress needs human input"), so an agent neither quits early nor runs forever.
+
+Not every goal needs all four spelled out, but a goal with no verifiable outcome and no sense of "done" is weak.
 
 Rate the goal as:
-- "strong": Clear outcome focus, specific, measurable — little or no improvement needed
-- "moderate": Has some outcome language but could be more specific or impactful
-- "weak": Task-centric, vague, or missing outcome focus
+- "strong": Concrete outcome, verifiable success, clear sense of done — little or no improvement needed
+- "moderate": Outcome is stated but validation or the stop condition is fuzzy
+- "weak": Activity-centric, vague, unverifiable, or open-ended
+
+When you suggest an improvement, keep it concise (1-3 sentences) and grounded in the node's actual tasks, inputs, and outputs — do not invent capabilities the node doesn't have.
 
 Return ONLY a JSON object with this exact structure:
 {
   "rating": "strong" | "moderate" | "weak",
   "suggestion": "The improved goal text",
-  "reasoning": "Brief explanation of what was improved and why (1-2 sentences)"
+  "reasoning": "Brief explanation of what was improved and why, referencing the contract parts that were missing (1-2 sentences)"
 }`,
     userPromptTemplate: `Evaluate and improve this goal for a workflow node:
 
