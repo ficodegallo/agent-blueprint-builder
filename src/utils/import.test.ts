@@ -86,6 +86,88 @@ describe('parseImportedJSON', () => {
     });
   });
 
+  describe('Agentic pattern node types', () => {
+    it('should accept blueprints containing the agentic node types', () => {
+      const blueprint = createValidBlueprint();
+      blueprint.nodes.push(
+        {
+          id: 'orch1',
+          type: 'orchestrator',
+          position: { x: 100, y: 0 },
+          data: {
+            nodeType: 'orchestrator',
+            name: 'Manager',
+            goal: 'Coordinate',
+            delegationStrategy: 'By skill',
+            workers: [],
+            synthesis: '',
+            terminationCondition: 'All done',
+            maxIterations: '5',
+            budget: '',
+            inputs: [],
+            outputs: [],
+          },
+        },
+        {
+          id: 'router1',
+          type: 'router',
+          position: { x: 100, y: 100 },
+          data: {
+            nodeType: 'router',
+            name: 'Triage',
+            description: '',
+            classifierInstructions: '',
+            routes: [
+              { id: 'a', label: 'A', description: '' },
+              { id: 'b', label: 'B', description: '' },
+            ],
+            fallbackRoute: 'B',
+          },
+        },
+        {
+          id: 'loop1',
+          type: 'agentLoop',
+          position: { x: 100, y: 200 },
+          data: {
+            nodeType: 'agentLoop',
+            name: 'Agent',
+            goal: 'Work',
+            inputs: [],
+            outputs: [],
+            maxIterations: '10',
+            memory: '',
+            integrations: [],
+            stopCondition: 'Done',
+          },
+        }
+      );
+      const result = parseImportedJSON(JSON.stringify(blueprint));
+      expect(result.success).toBe(true);
+      expect(result.blueprint?.nodes).toHaveLength(5);
+    });
+
+    it('should accept workflow nodes', () => {
+      const blueprint = createValidBlueprint();
+      blueprint.nodes.push({
+        id: 'wf1',
+        type: 'workflow',
+        position: { x: 100, y: 0 },
+        data: {
+          nodeType: 'workflow',
+          name: 'Sub-Workflow',
+          description: '',
+          workflowId: '',
+          workflowName: 'Validation',
+          inputs: [],
+          outputs: [],
+          version: '1.0',
+        },
+      });
+      const result = parseImportedJSON(JSON.stringify(blueprint));
+      expect(result.success).toBe(true);
+    });
+  });
+
   describe('Invalid JSON', () => {
     it('should return error for invalid JSON syntax', () => {
       const result = parseImportedJSON('{ invalid json }');
