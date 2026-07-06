@@ -188,6 +188,82 @@ Generate a JSON object with this exact structure:
           "ai_confidence": "high | medium | low",
           "ai_notes": "string",
           "ai_generated": true
+
+          // For orchestrator nodes (manager agent + dynamic worker pool):
+          "nodeType": "orchestrator",
+          "name": "string",
+          "goal": "string",
+          "delegationStrategy": "string - how the manager decomposes and assigns work",
+          "workers": [{"id": "string", "name": "string", "description": "string - what this worker handles and when", "skills": ["string"]}],
+          "synthesis": "string - how worker outputs combine",
+          "terminationCondition": "string - REQUIRED: when the manager stops",
+          "maxIterations": "string",
+          "budget": "string",
+          "inputs": [{"name": "string", "required": boolean}],
+          "outputs": [{"name": "string", "required": boolean}],
+          "successCriteria": ["string"],
+          "hitl": {"mode": "none | notify | sampled | approval", "reviewer": "string", "sla": "string", "samplingRate": "string", "escalationPath": "string"},
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For agentLoop nodes (one autonomous agent with skills/tools):
+          "nodeType": "agentLoop",
+          "name": "string",
+          "goal": "string",
+          "inputs": [{"name": "string", "required": boolean}],
+          "outputs": [{"name": "string", "required": boolean}],
+          "maxIterations": "string",
+          "memory": "string - context the agent keeps across iterations",
+          "integrations": ["string"],
+          "skills": ["string"],
+          "tools": ["string"],
+          "stopCondition": "string - REQUIRED: when the agent stops",
+          "guardrails": ["string"],
+          "successCriteria": ["string"],
+          "failureHandling": "string",
+          "hitl": {"mode": "none | notify | sampled | approval", "reviewer": "string", "sla": "string", "samplingRate": "string", "escalationPath": "string"},
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For router nodes (model-driven classification, unlike rule-based decision):
+          "nodeType": "router",
+          "name": "string",
+          "description": "string",
+          "classifierInstructions": "string - how the model decides the route",
+          "routes": [{"id": "string", "label": "string", "description": "string - what belongs on this route"}],
+          "fallbackRoute": "string - route label for low-confidence items",
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For parallel nodes (fan-out/fan-in):
+          "nodeType": "parallel",
+          "name": "string",
+          "mode": "split | join",
+          "description": "string",
+          "branches": [{"id": "string", "label": "string", "description": "string"}], // split mode only
+          "joinBehavior": "wait-all | wait-any | merge-results", // join mode only
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For evaluatorOptimizer nodes (generate -> evaluate -> iterate until quality passes):
+          "nodeType": "evaluatorOptimizer",
+          "name": "string",
+          "goal": "string",
+          "generatorDescription": "string",
+          "evaluatorCriteria": ["string - verifiable checks"],
+          "passCondition": "string",
+          "maxIterations": "string",
+          "onMaxIterations": "string - e.g. escalate to human review",
+          "inputs": [{"name": "string", "required": boolean}],
+          "outputs": [{"name": "string", "required": boolean}],
+          "hitl": {"mode": "none | notify | sampled | approval", "reviewer": "string", "sla": "string", "samplingRate": "string", "escalationPath": "string"},
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
         }
       }
     ],
@@ -204,19 +280,34 @@ Generate a JSON object with this exact structure:
 }
 \`\`\`
 
+## Choosing the right pattern
+
+Prefer the SIMPLEST pattern that fits — most processes are deterministic pipelines of work nodes:
+- Fixed, known steps → chain of "work" nodes (agent / automation / human)
+- Rule-based branching ("if amount > $10k") → "decision" node
+- Judgment-based classification ("what kind of request is this?") → "router" node
+- Independent steps that can run at the same time → "parallel" split + join pair
+- Output that must iterate until it meets a quality bar → "evaluatorOptimizer" node
+- Work that must be decomposed dynamically across specialists at runtime → "orchestrator" node
+- Open-ended task where the steps cannot be known in advance → "agentLoop" node
+Do NOT use orchestrator or agentLoop when the steps are known in advance — a deterministic flow is cheaper, more reliable, and easier to review.
+
 ## Requirements
 
 1. Start with exactly one trigger node
 2. End with at least one end node
 3. All nodes except trigger must have incoming edges
 4. All nodes except end must have outgoing edges
-5. Decision nodes must have exactly 2 outgoing edges (yes/no branches)
-6. Use ai_confidence to indicate your certainty:
+5. Decision nodes need one outgoing edge per condition (sourceHandle = condition id); router nodes need one outgoing edge per route (sourceHandle = route id); parallel split nodes need one outgoing edge per branch (sourceHandle = branch id)
+6. Every parallel split must have a matching parallel join downstream
+7. Every orchestrator must have a terminationCondition; every agentLoop must have a stopCondition
+8. Any node whose action is hard to reverse or outward-facing (sending to customers, moving money, deleting records) must have hitl.mode "approval" with a reviewer
+9. Use ai_confidence to indicate your certainty:
    - "high": Clear from documentation
    - "medium": Reasonable inference
    - "low": Significant assumption or unclear
-7. Use ai_notes to explain any assumptions or uncertainties
-8. Always set ai_generated to true for all nodes
+10. Use ai_notes to explain any assumptions or uncertainties
+11. Always set ai_generated to true for all nodes
 
 Respond ONLY with the JSON object. No additional text.`,
   },

@@ -117,6 +117,11 @@ const NODE_HEADER_COLORS: Record<string, { fill: string; text: string }> = {
   decision:   { fill: 'F59E0B', text: '1A1A1A' }, // Amber — dark text for readability
   end:        { fill: 'EF4444', text: 'FFFFFF' }, // Red
   workflow:   { fill: 'A855F7', text: 'FFFFFF' }, // Purple
+  orchestrator:       { fill: '6366F1', text: 'FFFFFF' }, // Indigo
+  agentLoop:          { fill: '06B6D4', text: 'FFFFFF' }, // Cyan
+  router:             { fill: 'F43F5E', text: 'FFFFFF' }, // Rose
+  parallel:           { fill: '14B8A6', text: 'FFFFFF' }, // Teal
+  evaluatorOptimizer: { fill: '65A30D', text: 'FFFFFF' }, // Lime
 };
 
 /** Resolve the header color for a given node's data. */
@@ -440,12 +445,22 @@ function buildExecutiveSummary(
   const decisions = orderedNodes.filter((n) => n.data.nodeType === 'decision').length;
   const workflows = orderedNodes.filter((n) => n.data.nodeType === 'workflow').length;
   const ends = orderedNodes.filter((n) => n.data.nodeType === 'end').length;
+  const orchestrators = orderedNodes.filter((n) => n.data.nodeType === 'orchestrator').length;
+  const agentLoops = orderedNodes.filter((n) => n.data.nodeType === 'agentLoop').length;
+  const routers = orderedNodes.filter((n) => n.data.nodeType === 'router').length;
+  const parallels = orderedNodes.filter((n) => n.data.nodeType === 'parallel').length;
+  const evaluators = orderedNodes.filter((n) => n.data.nodeType === 'evaluatorOptimizer').length;
 
   const parts: string[] = [];
   if (triggers > 0) parts.push(`${triggers} Trigger${triggers > 1 ? 's' : ''}`);
   if (agents > 0) parts.push(`${agents} AI Agent${agents > 1 ? 's' : ''}`);
   if (automations > 0) parts.push(`${automations} Automation${automations > 1 ? 's' : ''}`);
   if (humans > 0) parts.push(`${humans} Human Task${humans > 1 ? 's' : ''}`);
+  if (orchestrators > 0) parts.push(`${orchestrators} Orchestrator${orchestrators > 1 ? 's' : ''}`);
+  if (agentLoops > 0) parts.push(`${agentLoops} Agent Loop${agentLoops > 1 ? 's' : ''}`);
+  if (routers > 0) parts.push(`${routers} AI Router${routers > 1 ? 's' : ''}`);
+  if (parallels > 0) parts.push(`${parallels} Parallel Gateway${parallels > 1 ? 's' : ''}`);
+  if (evaluators > 0) parts.push(`${evaluators} Evaluator Loop${evaluators > 1 ? 's' : ''}`);
   if (decisions > 0) parts.push(`${decisions} Decision${decisions > 1 ? 's' : ''}`);
   if (workflows > 0) parts.push(`${workflows} Workflow${workflows > 1 ? 's' : ''}`);
   if (ends > 0) parts.push(`${ends} End Point${ends > 1 ? 's' : ''}`);
@@ -528,6 +543,11 @@ async function buildProcessFlowOverview(
     else if (data.nodeType === 'decision') desc = (data.description as string) || '';
     else if (data.nodeType === 'end') desc = (data.outcome as string) || '';
     else if (data.nodeType === 'workflow') desc = (data.description as string) || '';
+    else if (data.nodeType === 'orchestrator') desc = (data.goal as string) || '';
+    else if (data.nodeType === 'agentLoop') desc = (data.goal as string) || '';
+    else if (data.nodeType === 'router') desc = (data.description as string) || '';
+    else if (data.nodeType === 'parallel') desc = (data.description as string) || '';
+    else if (data.nodeType === 'evaluatorOptimizer') desc = (data.goal as string) || '';
 
     // Truncate long descriptions for summary table
     const truncated = desc.length > 100 ? desc.substring(0, 97) + '...' : desc;
@@ -557,6 +577,120 @@ async function buildProcessFlowOverview(
 
   elements.push(pageBreak());
   return elements;
+}
+
+// Inputs/Outputs tables shared by agentic node types
+function appendIOTables(
+  elements: (Paragraph | Table)[],
+  data: SerializedNode['data'],
+  nodeColor: { fill: string; text: string }
+): void {
+  const d = data as Record<string, unknown>;
+  for (const key of ['inputs', 'outputs'] as const) {
+    const items = (d[key] || []) as { name: string; required: boolean }[];
+    if (items.length === 0) continue;
+    elements.push(
+      new Paragraph({
+        children: [
+          new TextRun({
+            text: key === 'inputs' ? 'Inputs' : 'Outputs',
+            bold: true,
+            font: 'Calibri',
+            size: 22,
+          }),
+        ],
+        spacing: { before: 120, after: 60 },
+      })
+    );
+    elements.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          makeColoredHeaderRow(nodeColor, { text: 'Name', width: 60 }, { text: 'Required', width: 40 }),
+          ...items.map((item) =>
+            makeRow(
+              { text: item.name, width: 60 },
+              { text: item.required ? 'Required' : 'Optional', width: 40 }
+            )
+          ),
+        ],
+      })
+    );
+  }
+}
+
+// Agent spec (engineering handoff) + human oversight table
+function appendAgentSpec(
+  elements: (Paragraph | Table)[],
+  data: SerializedNode['data'],
+  nodeColor: { fill: string; text: string }
+): void {
+  const d = data as Record<string, unknown>;
+  const spec = {
+    description: d.description as string | undefined,
+    skills: (d.skills || []) as string[],
+    tools: (d.tools || []) as string[],
+    autonomyLevel: d.autonomyLevel as string | undefined,
+    guardrails: (d.guardrails || []) as string[],
+    successCriteria: (d.successCriteria || []) as string[],
+    stopCondition: d.stopCondition as string | undefined,
+    failureHandling: d.failureHandling as string | undefined,
+  };
+  const hitl = d.hitl as
+    | { mode: string; reviewer: string; sla: string; samplingRate: string; escalationPath: string }
+    | undefined;
+
+  const rows: [string, string][] = [];
+  if (spec.description) rows.push(['Agent Description', spec.description]);
+  if (spec.skills.length) rows.push(['Skills', spec.skills.join(', ')]);
+  if (spec.tools.length) rows.push(['Tools', spec.tools.join(', ')]);
+  if (spec.autonomyLevel) rows.push(['Autonomy Level', spec.autonomyLevel]);
+  if (spec.guardrails.length) rows.push(['Guardrails', spec.guardrails.join('; ')]);
+  if (spec.successCriteria.length) rows.push(['Success Criteria', spec.successCriteria.join('; ')]);
+  if (spec.stopCondition) rows.push(['Stop Condition', spec.stopCondition]);
+  if (spec.failureHandling) rows.push(['Failure Handling', spec.failureHandling]);
+
+  if (rows.length > 0) {
+    elements.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'Agent Specification', bold: true, font: 'Calibri', size: 22 })],
+        spacing: { before: 120, after: 60 },
+      })
+    );
+    elements.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          makeColoredHeaderRow(nodeColor, { text: 'Field', width: 30 }, { text: 'Value', width: 70 }),
+          ...rows.map(([field, value]) => makeRow({ text: field, width: 30 }, { text: value, width: 70 })),
+        ],
+      })
+    );
+  }
+
+  if (hitl && hitl.mode !== 'none') {
+    const hitlRows: [string, string][] = [['Mode', hitl.mode]];
+    if (hitl.reviewer) hitlRows.push(['Reviewer', hitl.reviewer]);
+    if (hitl.sla) hitlRows.push(['SLA', hitl.sla]);
+    if (hitl.samplingRate) hitlRows.push(['Sampling Rate', hitl.samplingRate]);
+    hitlRows.push(['Escalation Path', hitl.escalationPath || 'NOT DEFINED']);
+
+    elements.push(
+      new Paragraph({
+        children: [new TextRun({ text: 'Human Oversight', bold: true, font: 'Calibri', size: 22 })],
+        spacing: { before: 120, after: 60 },
+      })
+    );
+    elements.push(
+      new Table({
+        width: { size: 100, type: WidthType.PERCENTAGE },
+        rows: [
+          makeColoredHeaderRow(nodeColor, { text: 'Field', width: 30 }, { text: 'Value', width: 70 }),
+          ...hitlRows.map(([field, value]) => makeRow({ text: field, width: 30 }, { text: value, width: 70 })),
+        ],
+      })
+    );
+  }
 }
 
 function buildDetailedNodeSpecs(
@@ -915,6 +1049,103 @@ function buildDetailedNodeSpecs(
           })
         );
       }
+    } else if (data.nodeType === 'orchestrator') {
+      if (data.goal) elements.push(labelValue('Goal', data.goal as string));
+      if (data.delegationStrategy) elements.push(labelValue('Delegation Strategy', data.delegationStrategy as string));
+      const workers = (data.workers || []) as { name: string; description: string; skills: string[] }[];
+      if (workers.length > 0) {
+        elements.push(
+          new Paragraph({
+            children: [new TextRun({ text: 'Worker Pool', bold: true, font: 'Calibri', size: 22 })],
+            spacing: { before: 120, after: 60 },
+          })
+        );
+        elements.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              makeColoredHeaderRow(
+                nodeColor,
+                { text: 'Worker', width: 25 },
+                { text: 'Handles', width: 50 },
+                { text: 'Skills', width: 25 }
+              ),
+              ...workers.map((w) =>
+                makeRow(
+                  { text: w.name || '—', width: 25 },
+                  { text: w.description || '—', width: 50 },
+                  { text: w.skills?.join(', ') || '—', width: 25 }
+                )
+              ),
+            ],
+          })
+        );
+      }
+      if (data.synthesis) elements.push(labelValue('Synthesis', data.synthesis as string));
+      elements.push(labelValue('Termination Condition', (data.terminationCondition as string) || 'NOT DEFINED'));
+      if (data.maxIterations) elements.push(labelValue('Max Iterations', data.maxIterations as string));
+      if (data.budget) elements.push(labelValue('Budget', data.budget as string));
+      appendIOTables(elements, data, nodeColor);
+      appendAgentSpec(elements, data, nodeColor);
+    } else if (data.nodeType === 'agentLoop') {
+      if (data.goal) elements.push(labelValue('Goal', data.goal as string));
+      elements.push(labelValue('Stop Condition', (data.stopCondition as string) || 'NOT DEFINED'));
+      if (data.maxIterations) elements.push(labelValue('Max Iterations', data.maxIterations as string));
+      if (data.memory) elements.push(labelValue('Memory', data.memory as string));
+      appendIOTables(elements, data, nodeColor);
+      appendAgentSpec(elements, data, nodeColor);
+    } else if (data.nodeType === 'router') {
+      if (data.description) elements.push(labelValue('Description', data.description as string));
+      if (data.classifierInstructions)
+        elements.push(labelValue('Classifier Instructions', data.classifierInstructions as string));
+      const routes = (data.routes || []) as { label: string; description: string }[];
+      if (routes.length > 0) {
+        elements.push(
+          new Paragraph({
+            children: [new TextRun({ text: 'Routes', bold: true, font: 'Calibri', size: 22 })],
+            spacing: { before: 120, after: 60 },
+          })
+        );
+        elements.push(
+          new Table({
+            width: { size: 100, type: WidthType.PERCENTAGE },
+            rows: [
+              makeColoredHeaderRow(nodeColor, { text: 'Route', width: 30 }, { text: 'What belongs here', width: 70 }),
+              ...routes.map((r) =>
+                makeRow({ text: r.label, width: 30 }, { text: r.description || '—', width: 70 })
+              ),
+            ],
+          })
+        );
+      }
+      elements.push(labelValue('Fallback Route', (data.fallbackRoute as string) || 'NOT DEFINED'));
+    } else if (data.nodeType === 'parallel') {
+      elements.push(labelValue('Mode', data.mode === 'join' ? 'Join (fan-in)' : 'Split (fan-out)'));
+      if (data.description) elements.push(labelValue('Description', data.description as string));
+      const branches = (data.branches || []) as { label: string; description: string }[];
+      if (data.mode === 'split' && branches.length > 0) {
+        elements.push(
+          labelValue('Branches', branches.map((b) => b.label).join(', '))
+        );
+      }
+      if (data.mode === 'join') {
+        elements.push(labelValue('Join Behavior', data.joinBehavior as string));
+      }
+    } else if (data.nodeType === 'evaluatorOptimizer') {
+      if (data.goal) elements.push(labelValue('Goal', data.goal as string));
+      if (data.generatorDescription) elements.push(labelValue('Generator', data.generatorDescription as string));
+      const criteria = (data.evaluatorCriteria || []) as string[];
+      elements.push(labelValue('Evaluator Criteria', criteria.length ? criteria.join('; ') : 'NOT DEFINED'));
+      elements.push(labelValue('Pass Condition', (data.passCondition as string) || 'NOT DEFINED'));
+      if (data.maxIterations) elements.push(labelValue('Max Iterations', data.maxIterations as string));
+      if (data.onMaxIterations) elements.push(labelValue('On Max Iterations', data.onMaxIterations as string));
+      appendIOTables(elements, data, nodeColor);
+      appendAgentSpec(elements, data, nodeColor);
+    }
+
+    // Agent spec + human oversight also apply to agent-type work nodes
+    if (data.nodeType === 'work') {
+      appendAgentSpec(elements, data, nodeColor);
     }
 
     // AI metadata note if present
