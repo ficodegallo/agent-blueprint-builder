@@ -9,7 +9,9 @@ import { IntegrationDetailsDialog } from '../IntegrationDetailsDialog';
 import { ApiDiscoveryDialog } from '../../dialogs/ApiDiscoveryDialog';
 import { useTaskAutoOrder } from '../../../hooks/useTaskAutoOrder';
 import { useGoalEvaluate } from '../../../hooks/useGoalEvaluate';
-import { migrateIntegrations, type IntegrationDetail, type ApiEndpoint, type IOItem } from '../../../types';
+import { migrateIntegrations, type IntegrationDetail, type ApiEndpoint, type IOItem, type AgentSpecFields } from '../../../types';
+import { AgentSpecSection } from './AgentSpecSection';
+import { HitlPolicySection } from './HitlPolicySection';
 import type { AppNode } from '../../../store/nodesStore';
 import type { NodeData, WorkNodeData } from '../../../types';
 import type { DialogType } from '../../../store/uiStore';
@@ -343,6 +345,17 @@ export function WorkNodePanel({ node, updateNode, incomingEdges, getNode, openDi
           <p className="text-xs text-gray-400 mt-2 italic">No integrations configured</p>
         )}
       </div>
+
+      {/* Human oversight + agent spec — for automated workers */}
+      {data.workerType !== 'human' && (
+        <HitlPolicySection hitl={data.hitl} onChange={(hitl) => updateNode(node.id, { hitl })} />
+      )}
+      {data.workerType === 'agent' && (
+        <AgentSpecSection
+          data={data}
+          onChange={(partial: Partial<AgentSpecFields>) => updateNode(node.id, partial)}
+        />
+      )}
 
       {/* Integration Details Dialog */}
       {editingIntegration && (

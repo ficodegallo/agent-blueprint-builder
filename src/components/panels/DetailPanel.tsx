@@ -9,6 +9,11 @@ import { WorkNodePanel } from './node-panels/WorkNodePanel';
 import { DecisionNodePanel } from './node-panels/DecisionNodePanel';
 import { EndNodePanel } from './node-panels/EndNodePanel';
 import { WorkflowNodePanel } from './node-panels/WorkflowNodePanel';
+import { OrchestratorNodePanel } from './node-panels/OrchestratorNodePanel';
+import { AgentLoopNodePanel } from './node-panels/AgentLoopNodePanel';
+import { RouterNodePanel } from './node-panels/RouterNodePanel';
+import { ParallelNodePanel } from './node-panels/ParallelNodePanel';
+import { EvaluatorOptimizerNodePanel } from './node-panels/EvaluatorOptimizerNodePanel';
 
 export function DetailPanel() {
   const selectedNodeId = useUIStore((state) => state.selectedNodeId);
@@ -97,6 +102,26 @@ export function DetailPanel() {
           savedBlueprints={savedBlueprints}
           navigate={navigate}
         />
+      )}
+
+      {data.nodeType === 'orchestrator' && (
+        <OrchestratorNodePanel node={selectedNode} updateNode={updateNode} />
+      )}
+
+      {data.nodeType === 'agentLoop' && (
+        <AgentLoopNodePanel node={selectedNode} updateNode={updateNode} />
+      )}
+
+      {data.nodeType === 'router' && (
+        <RouterNodePanel node={selectedNode} updateNode={updateNode} />
+      )}
+
+      {data.nodeType === 'parallel' && (
+        <ParallelNodePanel node={selectedNode} updateNode={updateNode} />
+      )}
+
+      {data.nodeType === 'evaluatorOptimizer' && (
+        <EvaluatorOptimizerNodePanel node={selectedNode} updateNode={updateNode} />
       )}
 
       {/* AI Generation Info */}

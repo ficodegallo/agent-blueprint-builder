@@ -4,14 +4,29 @@ import type {
   DecisionNodeData,
   EndNodeData,
   WorkflowNodeData,
+  OrchestratorNodeData,
+  AgentLoopNodeData,
+  RouterNodeData,
+  ParallelNodeData,
+  EvaluatorOptimizerNodeData,
 } from '../types';
 
 export interface NodeTemplate {
   id: string;
-  category: 'trigger' | 'agent' | 'automation' | 'human' | 'flow' | 'workflow';
+  category: 'trigger' | 'agent' | 'automation' | 'human' | 'flow' | 'workflow' | 'agentic';
   name: string;
   description: string;
-  data: TriggerNodeData | WorkNodeData | DecisionNodeData | EndNodeData | WorkflowNodeData;
+  data:
+    | TriggerNodeData
+    | WorkNodeData
+    | DecisionNodeData
+    | EndNodeData
+    | WorkflowNodeData
+    | OrchestratorNodeData
+    | AgentLoopNodeData
+    | RouterNodeData
+    | ParallelNodeData
+    | EvaluatorOptimizerNodeData;
 }
 
 export const TEMPLATES: NodeTemplate[] = [
@@ -704,6 +719,135 @@ export const TEMPLATES: NodeTemplate[] = [
       version: '1.0',
     },
   },
+
+  // === AGENTIC PATTERN TEMPLATES ===
+  {
+    id: 'agentic-orchestrator',
+    category: 'agentic',
+    name: 'Orchestrator + Workers',
+    description: 'Manager agent decomposes work and delegates to a worker pool',
+    data: {
+      nodeType: 'orchestrator',
+      name: 'Manager Agent',
+      goal: 'Decompose the incoming request into subtasks, delegate each to the best-suited worker, and synthesize a complete result',
+      delegationStrategy: 'Break the request into independent subtasks; assign each to the worker whose description best matches; run independent subtasks in parallel',
+      workers: [
+        {
+          id: 'worker-research',
+          name: 'Research Worker',
+          description: 'Gathers facts and source material. Use when a subtask needs information that is not already in the request.',
+          skills: ['Web search', 'Document retrieval'],
+        },
+        {
+          id: 'worker-drafting',
+          name: 'Drafting Worker',
+          description: 'Produces written deliverables. Use when a subtask requires composing text from gathered inputs.',
+          skills: ['Document generation'],
+        },
+      ],
+      synthesis: 'Combine worker outputs into a single deliverable; resolve conflicts by preferring sourced facts over inferences',
+      terminationCondition: 'All subtasks complete and synthesis passes review, or budget exhausted',
+      maxIterations: '10 delegation rounds',
+      budget: '',
+      inputs: [{ name: 'Request details', required: true }],
+      outputs: [{ name: 'Synthesized result', required: true }],
+      successCriteria: ['Every subtask has a worker-produced result', 'Final output addresses the full request'],
+      hitl: { mode: 'approval', reviewer: '', sla: '', samplingRate: '', escalationPath: '' },
+    },
+  },
+  {
+    id: 'agentic-agent-loop',
+    category: 'agentic',
+    name: 'Agent Loop (Skills)',
+    description: 'One autonomous agent selecting among attached skills until done',
+    data: {
+      nodeType: 'agentLoop',
+      name: 'Autonomous Agent',
+      goal: 'Work the task to completion, choosing the right skill for each step',
+      inputs: [{ name: 'Task description', required: true }],
+      outputs: [{ name: 'Completed result', required: true }],
+      maxIterations: '25 steps',
+      memory: 'Running scratchpad of findings and decisions',
+      integrations: [],
+      skills: ['Data lookup', 'Document generation'],
+      tools: [],
+      stopCondition: 'Success criteria verified, or no skill can make further progress',
+      guardrails: ['Never take irreversible external actions without approval'],
+      successCriteria: ['Output verified against the stated goal'],
+      failureHandling: 'Escalate to human with a summary of attempts and blockers',
+    },
+  },
+  {
+    id: 'agentic-router',
+    category: 'agentic',
+    name: 'AI Router',
+    description: 'Model classifies each input and routes it to the right path',
+    data: {
+      nodeType: 'router',
+      name: 'Triage Router',
+      description: 'Classifies incoming items and routes to a specialized path',
+      classifierInstructions: 'Read the item and pick exactly one route based on the route descriptions. If confidence is low, use the fallback route.',
+      routes: [
+        { id: 'route-simple', label: 'Simple', description: 'Routine items handled by automation' },
+        { id: 'route-complex', label: 'Complex', description: 'Items needing agent reasoning' },
+        { id: 'route-exception', label: 'Exception', description: 'Anything unusual — goes to a human' },
+      ],
+      fallbackRoute: 'Exception',
+    },
+  },
+  {
+    id: 'agentic-parallel-split',
+    category: 'agentic',
+    name: 'Parallel Split',
+    description: 'Fan work out across branches that run at the same time',
+    data: {
+      nodeType: 'parallel',
+      name: 'Parallel Split',
+      mode: 'split',
+      description: 'Runs branches concurrently',
+      branches: [
+        { id: 'branch-1', label: 'Branch A', description: '' },
+        { id: 'branch-2', label: 'Branch B', description: '' },
+      ],
+      joinBehavior: 'wait-all',
+    },
+  },
+  {
+    id: 'agentic-parallel-join',
+    category: 'agentic',
+    name: 'Parallel Join',
+    description: 'Wait for parallel branches and merge their results',
+    data: {
+      nodeType: 'parallel',
+      name: 'Parallel Join',
+      mode: 'join',
+      description: 'Waits for incoming branches before continuing',
+      branches: [],
+      joinBehavior: 'wait-all',
+    },
+  },
+  {
+    id: 'agentic-evaluator',
+    category: 'agentic',
+    name: 'Evaluator-Optimizer Loop',
+    description: 'Generator produces, evaluator scores, loop until quality passes',
+    data: {
+      nodeType: 'evaluatorOptimizer',
+      name: 'Quality Loop',
+      goal: 'Produce output that passes all quality criteria',
+      generatorDescription: 'Drafts the deliverable from the inputs',
+      evaluatorCriteria: [
+        'Factually consistent with the inputs',
+        'Complete — addresses every requirement',
+        'Meets formatting and tone standards',
+      ],
+      passCondition: 'All criteria met',
+      maxIterations: '5 rounds',
+      onMaxIterations: 'Escalate to human review with the best attempt and evaluator feedback',
+      inputs: [{ name: 'Source material', required: true }],
+      outputs: [{ name: 'Approved deliverable', required: true }],
+    },
+  },
 ];
 
 export const TEMPLATE_CATEGORIES = [
@@ -712,6 +856,7 @@ export const TEMPLATE_CATEGORIES = [
   { id: 'automation', label: 'Automations', color: 'yellow' },
   { id: 'human', label: 'Human Tasks', color: 'blue' },
   { id: 'workflow', label: 'Workflows', color: 'purple' },
+  { id: 'agentic', label: 'Agentic Patterns', color: 'indigo' },
   { id: 'flow', label: 'Flow Control', color: 'gray' },
 ] as const;
 

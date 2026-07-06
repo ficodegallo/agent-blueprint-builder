@@ -230,6 +230,16 @@ function nodeTypeLabel(data: SerializedNode['data']): string {
       return 'Decision';
     case 'end':
       return 'End';
+    case 'orchestrator':
+      return 'Orchestrator';
+    case 'agentLoop':
+      return 'Agent Loop';
+    case 'router':
+      return 'Router (AI)';
+    case 'parallel':
+      return data.mode === 'join' ? 'Parallel Join' : 'Parallel Split';
+    case 'evaluatorOptimizer':
+      return 'Evaluator-Optimizer Loop';
   }
 }
 

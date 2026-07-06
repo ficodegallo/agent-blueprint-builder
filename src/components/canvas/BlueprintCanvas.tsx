@@ -189,6 +189,16 @@ export function BlueprintCanvas() {
               return '#ef4444';
             case 'workflow':
               return '#a855f7';
+            case 'orchestrator':
+              return '#6366f1';
+            case 'agentLoop':
+              return '#06b6d4';
+            case 'router':
+              return '#f43f5e';
+            case 'parallel':
+              return '#14b8a6';
+            case 'evaluatorOptimizer':
+              return '#65a30d';
             default:
               return '#6b7280';
           }

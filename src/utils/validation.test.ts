@@ -323,3 +323,150 @@ describe('validateBlueprint', () => {
     });
   });
 });
+
+
+// ── Agentic pattern node validation ──────────────────────────────────
+
+function connectChain(ids: string[]): BlueprintEdge[] {
+  return ids.slice(0, -1).map((source, i) => ({
+    id: `e-${source}-${ids[i + 1]}`,
+    source,
+    target: ids[i + 1],
+  }));
+}
+
+describe('agentic pattern validation', () => {
+  it('errors when an orchestrator has no termination condition (E006)', () => {
+    const orchestrator: AppNode = {
+      id: 'orch1',
+      type: 'orchestrator',
+      position: { x: 100, y: 0 },
+      data: {
+        nodeType: 'orchestrator',
+        name: 'Manager',
+        goal: 'Coordinate work',
+        delegationStrategy: 'By skill match',
+        workers: [{ id: 'w1', name: 'Worker', description: 'Does things', skills: [] }],
+        synthesis: 'Merge results',
+        terminationCondition: '',
+        maxIterations: '',
+        budget: '',
+        inputs: [],
+        outputs: [],
+      },
+    };
+    const nodes = [createTriggerNode('t1'), orchestrator, createEndNode('e1')];
+    const result = validateBlueprint(nodes, connectChain(['t1', 'orch1', 'e1']));
+    expect(result.errors.some((e) => e.code === 'E006')).toBe(true);
+  });
+
+  it('errors when an agent loop has no stop condition (E007)', () => {
+    const loop: AppNode = {
+      id: 'loop1',
+      type: 'agentLoop',
+      position: { x: 100, y: 0 },
+      data: {
+        nodeType: 'agentLoop',
+        name: 'Agent',
+        goal: 'Do the work',
+        inputs: [],
+        outputs: [],
+        maxIterations: '',
+        memory: '',
+        integrations: [],
+        stopCondition: '',
+      },
+    };
+    const nodes = [createTriggerNode('t1'), loop, createEndNode('e1')];
+    const result = validateBlueprint(nodes, connectChain(['t1', 'loop1', 'e1']));
+    expect(result.errors.some((e) => e.code === 'E007')).toBe(true);
+  });
+
+  it('warns when a router has fewer than 2 routes (W007)', () => {
+    const router: AppNode = {
+      id: 'r1',
+      type: 'router',
+      position: { x: 100, y: 0 },
+      data: {
+        nodeType: 'router',
+        name: 'Router',
+        description: '',
+        classifierInstructions: '',
+        routes: [{ id: 'only', label: 'Only', description: '' }],
+        fallbackRoute: '',
+      },
+    };
+    const nodes = [createTriggerNode('t1'), router, createEndNode('e1')];
+    const result = validateBlueprint(nodes, connectChain(['t1', 'r1', 'e1']));
+    expect(result.warnings.some((w) => w.code === 'W007')).toBe(true);
+  });
+
+  it('warns on a parallel split with no join anywhere (W009)', () => {
+    const split: AppNode = {
+      id: 'p1',
+      type: 'parallel',
+      position: { x: 100, y: 0 },
+      data: {
+        nodeType: 'parallel',
+        name: 'Split',
+        mode: 'split',
+        description: '',
+        branches: [
+          { id: 'b1', label: 'A', description: '' },
+          { id: 'b2', label: 'B', description: '' },
+        ],
+        joinBehavior: 'wait-all',
+      },
+    };
+    const nodes = [createTriggerNode('t1'), split, createEndNode('e1')];
+    const result = validateBlueprint(nodes, connectChain(['t1', 'p1', 'e1']));
+    expect(result.warnings.some((w) => w.code === 'W009')).toBe(true);
+  });
+
+  it('warns when an evaluator loop has no criteria (W008)', () => {
+    const evalNode: AppNode = {
+      id: 'ev1',
+      type: 'evaluatorOptimizer',
+      position: { x: 100, y: 0 },
+      data: {
+        nodeType: 'evaluatorOptimizer',
+        name: 'Quality Loop',
+        goal: 'Produce good output',
+        generatorDescription: 'Drafts',
+        evaluatorCriteria: [],
+        passCondition: '',
+        maxIterations: '',
+        onMaxIterations: '',
+        inputs: [],
+        outputs: [],
+      },
+    };
+    const nodes = [createTriggerNode('t1'), evalNode, createEndNode('e1')];
+    const result = validateBlueprint(nodes, connectChain(['t1', 'ev1', 'e1']));
+    expect(result.warnings.some((w) => w.code === 'W008')).toBe(true);
+  });
+
+  it('passes a well-formed orchestrator blueprint', () => {
+    const orchestrator: AppNode = {
+      id: 'orch1',
+      type: 'orchestrator',
+      position: { x: 100, y: 0 },
+      data: {
+        nodeType: 'orchestrator',
+        name: 'Manager',
+        goal: 'Coordinate work',
+        delegationStrategy: 'By skill match',
+        workers: [{ id: 'w1', name: 'Worker', description: 'Does things', skills: [] }],
+        synthesis: 'Merge results',
+        terminationCondition: 'All subtasks done',
+        maxIterations: '10',
+        budget: '',
+        inputs: [],
+        outputs: [],
+      },
+    };
+    const nodes = [createTriggerNode('t1'), orchestrator, createEndNode('e1')];
+    const result = validateBlueprint(nodes, connectChain(['t1', 'orch1', 'e1']));
+    expect(result.errors).toHaveLength(0);
+  });
+});
