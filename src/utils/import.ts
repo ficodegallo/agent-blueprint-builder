@@ -13,7 +13,18 @@ function isValidNodeData(data: unknown): data is NodeData {
   return (
     typeof d.nodeType === 'string' &&
     typeof d.name === 'string' &&
-    ['trigger', 'work', 'decision', 'end'].includes(d.nodeType as string)
+    [
+      'trigger',
+      'work',
+      'decision',
+      'end',
+      'workflow',
+      'orchestrator',
+      'agentLoop',
+      'router',
+      'parallel',
+      'evaluatorOptimizer',
+    ].includes(d.nodeType as string)
   );
 }
 

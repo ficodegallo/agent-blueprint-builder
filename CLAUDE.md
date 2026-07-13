@@ -58,11 +58,11 @@ src/
 - `src/components/panels/IntegrationDetailsDialog.tsx` - Detailed integration configuration dialog
 - `src/components/shared/IOListEditor.tsx` - List editor with required/optional toggle
 - `src/features/smartImport/` - AI-powered blueprint generation from PDF/Word/text documents
-- `src/hooks/useTaskAutoOrder.ts` - AI-powered task reordering using Claude Opus 4.5
+- `src/hooks/useTaskAutoOrder.ts` - AI-powered task reordering using Claude Opus 4.8
 - `src/hooks/useGoalEvaluate.ts` - AI-powered goal evaluation and optimization
 - `src/hooks/useApiDiscovery.ts` - AI-powered API endpoint discovery for integrations
 - `src/components/dialogs/ApiDiscoveryDialog.tsx` - API discovery results modal with endpoint cards
-- `src/utils/aiPromptStorage.ts` - Centralized AI prompt storage for all 5 AI features
+- `src/utils/aiPromptStorage.ts` - Centralized AI prompt storage for all 6 AI features
 - `src/components/dialogs/AIPromptAdminDialog.tsx` - Tabbed admin dialog for viewing/editing all AI prompts
 - `src/utils/validation.ts` - Blueprint validation rules
 - `src/utils/export.ts` - JSON, Excel, and PDF export with Integration Details sheet
@@ -76,9 +76,30 @@ src/
 | Work (Agent) | Orange | #f97316 | AI agent tasks |
 | Work (Automation) | Yellow | #eab308 | Automated system tasks |
 | Work (Human) | Blue | #3b82f6 | Human-performed tasks |
-| Decision | Amber | #f59e0b | Branching logic with customizable Yes/No labels |
+| Decision | Amber | #f59e0b | Rule-based branching with customizable labels |
 | End | Red | #ef4444 | Process termination |
 | Workflow | Purple | #a855f7 | Reference to another workflow/blueprint |
+| Orchestrator | Indigo | #6366f1 | Manager agent + dynamic worker pool (orchestrator-workers pattern) |
+| Agent Loop | Cyan | #06b6d4 | One autonomous agent with skills/tools, looping to a stop condition |
+| Router | Rose | #f43f5e | Model-driven classification into routes (vs rule-based Decision) |
+| Parallel | Teal | #14b8a6 | Fan-out split / fan-in join gateways |
+| Evaluator Loop | Lime | #65a30d | Generator + evaluator iterating until quality criteria pass |
+
+### Agentic pattern node fields
+
+- **Orchestrator**: goal, delegation strategy, worker pool (name + routing-contract description + skills per worker), synthesis, termination condition (required), max iterations, budget, I/O
+- **Agent Loop**: goal, stop condition (required), max iterations, memory, skills, tools, integrations, I/O
+- **Router**: description, classifier instructions, routes (label + description per route), fallback route
+- **Parallel**: mode (split/join), branches (split), join behavior (wait-all / wait-any / merge-results)
+- **Evaluator-Optimizer**: goal, generator description, evaluator criteria, pass condition, max iterations, on-max-iterations behavior, I/O
+
+### Agent Spec (engineering handoff)
+
+Agent-type nodes (work-agent, orchestrator, agentLoop, evaluatorOptimizer) share optional `AgentSpecFields`: description (routing contract: what + when + differentiator), skills, tools, autonomy level (strict/guided/open), guardrails, success criteria, stop condition, failure handling. Edited via the collapsible Agent Spec section in the detail panel; exported as an Agent Specification table in the Word BRD.
+
+### Human-in-the-loop policy
+
+Automated nodes carry an optional `hitl` policy: mode (none / notify / sampled / approval), reviewer, SLA, sampling rate, escalation path. Shown as a badge on the canvas node, edited in the detail panel, exported as a Human Oversight table in the BRD.
 
 ## Node Handles
 
@@ -96,7 +117,7 @@ Work nodes (Agent, Automation, Human) include:
 - **Inputs**: List with required/optional toggle
 - **Tasks**: Multi-line task list with:
   - **Manual Drag-and-Drop**: Reorder tasks by dragging grip handles
-  - **Auto-Order Button**: AI-powered task reordering using Claude Opus 4.5 (considers goal, inputs, outputs, and dependencies)
+  - **Auto-Order Button**: AI-powered task reordering using Claude Opus 4.8 (considers goal, inputs, outputs, and dependencies)
   - **Autocomplete**: Type 3+ characters matching input/output names to see suggestions dropdown
   - Multi-line text areas for longer task descriptions
 - **Outputs**: List with required/optional toggle
@@ -179,7 +200,7 @@ interface ApiEndpoint {
 ## Task Auto-Order (AI-Powered Task Sequencing)
 
 ### Overview
-Intelligently reorder task lists within work nodes using Claude Opus 4.5 to determine optimal execution sequence.
+Intelligently reorder task lists within work nodes using Claude Opus 4.8 to determine optimal execution sequence.
 
 ### How It Works
 1. **Trigger**: Click "Auto-order" button in task list (appears when 2+ tasks exist)
@@ -188,7 +209,7 @@ Intelligently reorder task lists within work nodes using Claude Opus 4.5 to dete
    - Node's goal
    - Available inputs (with required/optional flags)
    - Expected outputs (with required/optional flags)
-3. **AI Processing**: Claude Opus 4.5 analyzes:
+3. **AI Processing**: Claude Opus 4.8 analyzes:
    - Dependencies between tasks
    - Logical execution flow
    - Input → Processing → Output pipeline
@@ -196,7 +217,7 @@ Intelligently reorder task lists within work nodes using Claude Opus 4.5 to dete
 4. **Result**: Returns reordered task list in optimal execution order
 
 ### Technical Details
-- **API**: Uses Claude Opus 4.5 (`claude-opus-4-5-20251101`) via Anthropic API
+- **API**: Uses Claude Opus 4.8 (`claude-opus-4-8`) via Anthropic API
 - **Timeout**: 60 seconds for API call
 - **Token Limit**: 4000 max tokens
 - **Error Handling**: Displays error messages for API failures, auth issues, or timeouts
@@ -236,7 +257,7 @@ Evaluates work node goals and suggests improved, outcome-focused versions using 
 4. Editing the goal clears any existing suggestion
 
 ### Technical Details
-- **API**: Uses Claude Opus 4.5 (`claude-opus-4-5-20251101`) via Anthropic API
+- **API**: Uses Claude Opus 4.8 (`claude-opus-4-8`) via Anthropic API
 - **Timeout**: 60 seconds for API call
 - **Token Limit**: 4000 max tokens
 - **Error Handling**: Displays error messages for API failures, auth issues, or timeouts; links to API key config
@@ -298,7 +319,7 @@ Generated nodes include:
 - `ai_notes: string` - Additional context or suggestions
 
 ### Technical Details
-- **API**: Uses Claude Sonnet 4.5 via Anthropic API
+- **API**: Uses Claude (see src/constants/aiModels.ts) via Anthropic API
 - **Token Limits**: Checks content size before API call (configurable max tokens)
 - **Timeouts**: 90-second timeout for API calls, 10-second timeout for layout
 - **Error Handling**:
@@ -313,6 +334,20 @@ Generated nodes include:
   - Fallback grid layout (5 columns) when auto-layout fails
 - **Debug Logging**: Comprehensive console logging throughout all stages
 
+## Interviewer (Discovery + Grill)
+
+Conversational panel (Interview button in the editor header) that builds or stress-tests the blueprint live — for process owners who have no documents to import.
+
+- **Discovery mode**: interviews the owner one question at a time, patching the canvas after every answer. Follows interview discipline: single question per turn, concrete over abstract, lists treated as unordered sets, no invented details (inferences flagged with low `ai_confidence`).
+- **Grill mode**: requires an existing draft; adversarially probes for unhandled exceptions, timeouts, approval gaps, vague goals, and missing failure paths, patching the canvas as gaps are resolved.
+- **Coverage checklist**: trigger, steps, systems, decisions, exceptions, volumes & SLAs, human oversight — shown as chips that progress missing → partial → covered.
+- **Mechanics**: the model returns JSON `{message, actions[], coverage, done}`; actions (addNode/updateNode/addEdge/removeNode/removeEdge) are applied to the Zustand stores immediately, with auto-layout re-run when nodes are added. Prompts editable in the AI Prompt Admin (`interviewer` feature key).
+- **Files**: `src/features/interviewer/` (useInterviewer hook, InterviewerPanel, types), prompts in `src/utils/aiPromptStorage.ts`.
+
+## AI Model Configuration
+
+All AI features read model IDs from `src/constants/aiModels.ts` (`AI_FEATURE_MODELS` map, default `claude-opus-4-8`). Update model IDs there, not in individual hooks.
+
 ## Validation Rules
 
 **Errors (block export):**
@@ -320,11 +355,20 @@ Generated nodes include:
 - E002: Missing End node
 - E003: Disconnected nodes
 - E004: Work nodes missing Goal
+- E006: Orchestrator missing termination condition
+- E007: Agent loop missing stop condition
 
 **Warnings:**
 - W001: Missing name
 - W002/W003: Empty inputs/tasks
 - W004: Decision with <2 branches
+- W006: Workflow node references a deleted blueprint
+- W007: Router with <2 routes
+- W008: Evaluator loop with no criteria
+- W009: Parallel split with no join anywhere
+- W010: Orchestrator with no workers
+
+**AI Best Practices check:** a built-in agent-design rulebook (`src/data/defaultBestPractices.ts`) always applies — verifiable success criteria, bounded loops, human gates on irreversible actions, simplest-pattern-first, one-agent-one-concern, failure paths on external calls — with user-defined practices appended when configured.
 
 ## Data Flow
 
@@ -463,7 +507,8 @@ JSON exports (.blueprint.json) provide full data for re-import:
 3. **Automations** (4): System Sync, Scheduled Report, Status Update, File Processing
 4. **Human Tasks** (4): Approval Gate, Exception Handler, Quality Review, Data Entry
 5. **Workflows** (4): Sub-Workflow, Validation Workflow, Approval Workflow, Notification Workflow
-6. **Flow Control** (3): Decision Point, Success End, Failure End
+6. **Agentic Patterns** (6): Orchestrator + Workers, Agent Loop (Skills), AI Router, Parallel Split, Parallel Join, Evaluator-Optimizer Loop
+7. **Flow Control** (3): Decision Point, Success End, Failure End
 
 Note: All Work node templates now include detailed IntegrationDetail objects with meaningful action descriptions.
 
@@ -502,7 +547,7 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 
 ### AI Prompt Admin (Centralized Prompt Management)
 - **Centralized Prompt Storage** (`src/utils/aiPromptStorage.ts`):
-  - Manages system and user prompts for all 5 AI features: Smart Import, Goal Evaluate, Task Auto-Order, API Discovery, Best Practices Analysis
+  - Manages system and user prompts for all 6 AI features: Smart Import, Goal Evaluate, Task Auto-Order, API Discovery, Best Practices Analysis
   - Default prompts extracted from hooks; custom overrides stored in localStorage (`blueprint-builder:ai-prompts:{feature}`)
   - Functions: `getActivePrompts()`, `saveCustomPrompts()`, `resetFeaturePrompts()`, `isFeatureCustomized()`, `getFeatureConfigs()`
   - One-time migration from old `blueprint-builder:smart-import-prompts` key
@@ -520,7 +565,7 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 ### Integration API Discovery (AI-Powered Endpoint Suggestions)
 - **AI-Powered API Discovery**:
   - "Discover" button on each integration row in DetailPanel
-  - Uses Claude Opus 4.5 to suggest 2-5 relevant API endpoints based on integration name and node context
+  - Uses Claude Opus 4.8 to suggest 2-5 relevant API endpoints based on integration name and node context
   - Returns endpoints with rich metadata: parameters, response fields, auth type, rate limits, documentation URLs
   - Confidence ratings (high/medium/low) for each suggested endpoint
 - **Discovery Dialog UI**:
@@ -541,7 +586,7 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 ### Goal Evaluate Feature (AI-Powered Goal Optimization)
 - **AI-Powered Goal Evaluation**:
   - "Evaluate" button appears next to Goal label when goal has content
-  - Uses Claude Opus 4.5 to analyze goal quality and suggest outcome-focused improvements
+  - Uses Claude Opus 4.8 to analyze goal quality and suggest outcome-focused improvements
   - Returns rating (strong/moderate/weak), improved suggestion, and reasoning
 - **Inline Suggestion UI**:
   - Color-coded rating badge (green=strong, amber=moderate, red=weak)
@@ -552,7 +597,7 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 ### Enhanced Task Management & Decision Nodes
 - **AI-Powered Task Auto-Ordering**:
   - Click "Auto-order" button on task lists (appears when 2+ tasks exist)
-  - Uses Claude Opus 4.5 to intelligently reorder tasks based on goal, inputs, outputs, and dependencies
+  - Uses Claude Opus 4.8 to intelligently reorder tasks based on goal, inputs, outputs, and dependencies
   - Considers logical execution flow and data dependencies
 - **Manual Task Reordering**:
   - Drag-and-drop tasks using grip handles

@@ -2,8 +2,9 @@ import { useState, useCallback } from 'react';
 import { getApiKey } from '../features/smartImport/hooks/useClaudeApi';
 import { getActivePrompts } from '../utils/aiPromptStorage';
 
-const API_URL = 'https://api.anthropic.com/v1/messages';
-const MODEL = 'claude-opus-4-5-20251101';
+import { AI_FEATURE_MODELS, ANTHROPIC_API_URL as API_URL } from '../constants/aiModels';
+
+const MODEL = AI_FEATURE_MODELS.goalEvaluate;
 const MAX_TOKENS = 4000;
 const TIMEOUT_MS = 60000;
 

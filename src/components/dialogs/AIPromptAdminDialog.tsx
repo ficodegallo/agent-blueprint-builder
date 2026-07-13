@@ -7,6 +7,7 @@ import {
   ArrowUpDown,
   Search,
   RotateCcw,
+  MessageCircleQuestion,
 } from 'lucide-react';
 import {
   getFeatureConfigs,
@@ -30,6 +31,7 @@ const FEATURE_ICONS: Record<AIFeatureKey, typeof FileUp> = {
   taskAutoOrder: ArrowUpDown,
   apiDiscovery: Search,
   bestPracticesAnalysis: BookOpen,
+  interviewer: MessageCircleQuestion,
 };
 
 export function AIPromptAdminDialog({ isOpen, onClose }: AIPromptAdminDialogProps) {

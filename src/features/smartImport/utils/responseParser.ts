@@ -37,7 +37,18 @@ function isValidNodeData(data: Record<string, unknown>): boolean {
   if (!data.nodeType || typeof data.nodeType !== 'string') return false;
   if (!data.name || typeof data.name !== 'string') return false;
 
-  const validTypes = ['trigger', 'work', 'decision', 'end', 'workflow'];
+  const validTypes = [
+    'trigger',
+    'work',
+    'decision',
+    'end',
+    'workflow',
+    'orchestrator',
+    'agentLoop',
+    'router',
+    'parallel',
+    'evaluatorOptimizer',
+  ];
   if (!validTypes.includes(data.nodeType)) return false;
 
   return true;

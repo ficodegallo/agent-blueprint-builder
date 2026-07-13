@@ -11,6 +11,8 @@
 ### 🎨 Visual Blueprint Designer
 - **Drag-and-drop canvas** powered by React Flow
 - **Multiple node types**: Triggers, Work (Agent/Automation/Human), Decisions, End Points, Workflows
+- **Agentic patterns**: Orchestrator + workers, autonomous agent loops, AI routers, parallel split/join, and evaluator-optimizer quality loops
+- **Agent specs & human oversight**: routing-contract descriptions, skills/tools, guardrails, success criteria, stop conditions, and per-node HITL policies (notify / sampled / approval)
 - **Multi-branch decision nodes** with customizable labels and dynamic handle positioning
 - **4-sided connection handles** for flexible workflow design
 - **Auto-centering** on first trigger node when opening blueprints
@@ -20,13 +22,19 @@
 Generate blueprints automatically from process documentation:
 - **Multi-format support**: PDF, Word (.docx), and plain text files
 - **Customizable prompts** with placeholder system for incorporating best practices
-- **Claude API integration** (Sonnet 4.5) for intelligent blueprint generation
+- **Claude API integration** for intelligent blueprint generation (models centralized in `src/constants/aiModels.ts`)
 - **Robust auto-layout** with BFS algorithm, cycle detection, and fallback grid positioning
 - **Test Connection** feature to validate API key before generation
 - **Enhanced error handling** with detailed logging and user feedback
 
+### 🎤 Interviewer (Discovery & Grill)
+No documents? Interview the process owner instead:
+- **Discovery mode** builds the blueprint from scratch, one question at a time, patching the canvas after every answer
+- **Grill mode** stress-tests an existing draft for exceptions, timeouts, approval gaps, and vague goals
+- **Live coverage checklist**: trigger, steps, systems, decisions, exceptions, volumes, oversight
+
 ### 📋 Task Management
-- **AI-powered task auto-ordering** using Claude Opus 4.5
+- **AI-powered task auto-ordering** using Claude (see src/constants/aiModels.ts)
 - **Manual drag-and-drop** reordering with visual feedback
 - **Autocomplete** suggestions from inputs/outputs (type 3+ characters)
 - **Multi-line task descriptions** for better readability
@@ -73,7 +81,7 @@ npm run test
 - **Styling**: Tailwind CSS v4
 - **Exports**: SheetJS (xlsx), jsPDF + jspdf-autotable, html2canvas
 - **Testing**: Vitest
-- **AI Integration**: Anthropic Claude API (Sonnet 4.5 & Opus 4.5)
+- **AI Integration**: Anthropic Claude API (models centralized in src/constants/aiModels.ts)
 
 ## 📖 Documentation
 
@@ -110,9 +118,14 @@ To use AI-powered features (Smart Import and Task Auto-ordering):
 | **Work (Agent)** | Orange | AI agent tasks |
 | **Work (Automation)** | Yellow | Automated system tasks |
 | **Work (Human)** | Blue | Human-performed tasks |
-| **Decision** | Amber | Branching logic (2+ branches with custom labels) |
+| **Decision** | Amber | Rule-based branching (2+ branches with custom labels) |
 | **End** | Red | Process termination points |
 | **Workflow** | Purple | Reference to another workflow/blueprint |
+| **Orchestrator** | Indigo | Manager agent delegating to a dynamic worker pool |
+| **Agent Loop** | Cyan | Autonomous agent with skills/tools and a stop condition |
+| **Router** | Rose | Model-driven classification into routes |
+| **Parallel** | Teal | Fan-out / fan-in gateways |
+| **Evaluator Loop** | Lime | Generate → evaluate → iterate until quality passes |
 
 ## 🏗️ Project Structure
 

@@ -44,6 +44,36 @@ export const NODE_COLORS = {
     text: 'text-purple-700',
     accent: 'bg-purple-500',
   },
+  orchestrator: {
+    bg: 'bg-indigo-50',
+    border: 'border-indigo-500',
+    text: 'text-indigo-700',
+    accent: 'bg-indigo-500',
+  },
+  agentLoop: {
+    bg: 'bg-cyan-50',
+    border: 'border-cyan-500',
+    text: 'text-cyan-700',
+    accent: 'bg-cyan-500',
+  },
+  router: {
+    bg: 'bg-rose-50',
+    border: 'border-rose-500',
+    text: 'text-rose-700',
+    accent: 'bg-rose-500',
+  },
+  parallel: {
+    bg: 'bg-teal-50',
+    border: 'border-teal-500',
+    text: 'text-teal-700',
+    accent: 'bg-teal-500',
+  },
+  evaluatorOptimizer: {
+    bg: 'bg-lime-50',
+    border: 'border-lime-600',
+    text: 'text-lime-700',
+    accent: 'bg-lime-600',
+  },
 } as const;
 
 // Status colors

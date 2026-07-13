@@ -105,6 +105,52 @@ export function exportToExcel(blueprint: Blueprint, filename?: string) {
       inputs = data.inputs.map((i) => `${i.name}${i.required ? ' (Required)' : ' (Optional)'}`).join('; ');
       outputs = data.outputs.map((o) => `${o.name}${o.required ? ' (Required)' : ' (Optional)'}`).join('; ');
       integrations = `Workflow ID: ${data.workflowId || 'Not specified'} (v${data.version})`;
+    } else if (data.nodeType === 'orchestrator') {
+      subType = 'Manager + Workers';
+      goalDesc = data.goal;
+      inputs = data.inputs.map((i) => `${i.name}${i.required ? ' (Required)' : ' (Optional)'}`).join('; ');
+      outputs = data.outputs.map((o) => `${o.name}${o.required ? ' (Required)' : ' (Optional)'}`).join('; ');
+      tasks = [
+        data.delegationStrategy ? `Delegation: ${data.delegationStrategy}` : '',
+        data.workers?.length ? `Workers: ${data.workers.map((w) => w.name).join(', ')}` : '',
+        data.synthesis ? `Synthesis: ${data.synthesis}` : '',
+        data.terminationCondition ? `Terminates when: ${data.terminationCondition}` : '',
+      ].filter(Boolean).join('; ');
+    } else if (data.nodeType === 'agentLoop') {
+      subType = 'Autonomous Agent';
+      goalDesc = data.goal;
+      inputs = data.inputs.map((i) => `${i.name}${i.required ? ' (Required)' : ' (Optional)'}`).join('; ');
+      outputs = data.outputs.map((o) => `${o.name}${o.required ? ' (Required)' : ' (Optional)'}`).join('; ');
+      tasks = [
+        data.skills?.length ? `Skills: ${data.skills.join(', ')}` : '',
+        data.tools?.length ? `Tools: ${data.tools.join(', ')}` : '',
+        data.stopCondition ? `Stops when: ${data.stopCondition}` : '',
+      ].filter(Boolean).join('; ');
+      const loopIntegrations = migrateIntegrations(data.integrations || []);
+      integrations = loopIntegrations.map((int) => `${int.name}${int.action ? ': ' + int.action : ''}`).join('; ');
+    } else if (data.nodeType === 'router') {
+      subType = 'AI Classification';
+      goalDesc = data.description;
+      tasks = [
+        data.routes?.length ? `Routes: ${data.routes.map((r) => r.label).join(', ')}` : '',
+        data.fallbackRoute ? `Fallback: ${data.fallbackRoute}` : '',
+      ].filter(Boolean).join('; ');
+    } else if (data.nodeType === 'parallel') {
+      subType = data.mode === 'join' ? 'Join' : 'Split';
+      goalDesc = data.description;
+      tasks = data.mode === 'split'
+        ? (data.branches?.length ? `Branches: ${data.branches.map((b) => b.label).join(', ')}` : '')
+        : `Join behavior: ${data.joinBehavior}`;
+    } else if (data.nodeType === 'evaluatorOptimizer') {
+      subType = 'Quality Loop';
+      goalDesc = data.goal;
+      inputs = data.inputs.map((i) => `${i.name}${i.required ? ' (Required)' : ' (Optional)'}`).join('; ');
+      outputs = data.outputs.map((o) => `${o.name}${o.required ? ' (Required)' : ' (Optional)'}`).join('; ');
+      tasks = [
+        data.generatorDescription ? `Generator: ${data.generatorDescription}` : '',
+        data.evaluatorCriteria?.length ? `Criteria: ${data.evaluatorCriteria.join('; ')}` : '',
+        data.passCondition ? `Passes when: ${data.passCondition}` : '',
+      ].filter(Boolean).join('; ');
     }
 
     nodesData.push([
@@ -357,6 +403,9 @@ export function exportToPDF(blueprint: Blueprint, filename?: string, canvasImage
   const decisionNodes = blueprint.nodes.filter((n) => n.data.nodeType === 'decision');
   const workflowNodes = blueprint.nodes.filter((n) => n.data.nodeType === 'workflow');
   const endNodes = blueprint.nodes.filter((n) => n.data.nodeType === 'end');
+  const agenticNodes = blueprint.nodes.filter((n) =>
+    ['orchestrator', 'agentLoop', 'router', 'parallel', 'evaluatorOptimizer'].includes(n.data.nodeType)
+  );
 
   // Helper to add section
   const addNodeSection = (title: string, nodes: SerializedNode[]) => {
@@ -458,6 +507,84 @@ export function exportToPDF(blueprint: Blueprint, filename?: string, canvasImage
           doc.text(splitOutcome, 30, yPosition);
           yPosition += splitOutcome.length * 4;
         }
+      } else if (data.nodeType === 'orchestrator') {
+        const lines = [
+          `Pattern: Orchestrator (manager + ${data.workers?.length || 0} workers)`,
+          data.goal ? `Goal: ${data.goal}` : '',
+          data.delegationStrategy ? `Delegation: ${data.delegationStrategy}` : '',
+          data.workers?.length ? `Workers: ${data.workers.map((w) => w.name).join(', ')}` : '',
+          data.terminationCondition ? `Terminates when: ${data.terminationCondition}` : '',
+        ].filter(Boolean);
+        lines.forEach((line) => {
+          const split = doc.splitTextToSize(line, 160);
+          doc.text(split, 30, yPosition);
+          yPosition += split.length * 4 + 1;
+        });
+      } else if (data.nodeType === 'agentLoop') {
+        const lines = [
+          'Pattern: Autonomous agent loop',
+          data.goal ? `Goal: ${data.goal}` : '',
+          data.skills?.length ? `Skills: ${data.skills.join(', ')}` : '',
+          data.tools?.length ? `Tools: ${data.tools.join(', ')}` : '',
+          data.stopCondition ? `Stops when: ${data.stopCondition}` : '',
+        ].filter(Boolean);
+        lines.forEach((line) => {
+          const split = doc.splitTextToSize(line, 160);
+          doc.text(split, 30, yPosition);
+          yPosition += split.length * 4 + 1;
+        });
+      } else if (data.nodeType === 'router') {
+        const lines = [
+          'Pattern: AI routing (model-driven classification)',
+          data.description ? `Description: ${data.description}` : '',
+          data.routes?.length ? `Routes: ${data.routes.map((r) => r.label).join(', ')}` : '',
+          data.fallbackRoute ? `Fallback: ${data.fallbackRoute}` : '',
+        ].filter(Boolean);
+        lines.forEach((line) => {
+          const split = doc.splitTextToSize(line, 160);
+          doc.text(split, 30, yPosition);
+          yPosition += split.length * 4 + 1;
+        });
+      } else if (data.nodeType === 'parallel') {
+        const lines = [
+          `Pattern: Parallel ${data.mode}`,
+          data.description ? `Description: ${data.description}` : '',
+          data.mode === 'split' && data.branches?.length
+            ? `Branches: ${data.branches.map((b) => b.label).join(', ')}`
+            : '',
+          data.mode === 'join' ? `Join behavior: ${data.joinBehavior}` : '',
+        ].filter(Boolean);
+        lines.forEach((line) => {
+          const split = doc.splitTextToSize(line, 160);
+          doc.text(split, 30, yPosition);
+          yPosition += split.length * 4 + 1;
+        });
+      } else if (data.nodeType === 'evaluatorOptimizer') {
+        const lines = [
+          'Pattern: Evaluator-optimizer quality loop',
+          data.goal ? `Goal: ${data.goal}` : '',
+          data.generatorDescription ? `Generator: ${data.generatorDescription}` : '',
+          data.evaluatorCriteria?.length ? `Criteria: ${data.evaluatorCriteria.join('; ')}` : '',
+          data.passCondition ? `Passes when: ${data.passCondition}` : '',
+        ].filter(Boolean);
+        lines.forEach((line) => {
+          const split = doc.splitTextToSize(line, 160);
+          doc.text(split, 30, yPosition);
+          yPosition += split.length * 4 + 1;
+        });
+      }
+
+      // Human oversight applies to any automated node type
+      {
+        const hitl = (data as Record<string, unknown>).hitl as
+          | { mode: string; reviewer: string; sla: string }
+          | undefined;
+        if (hitl && hitl.mode !== 'none') {
+          const oversight = `Human oversight: ${hitl.mode}${hitl.reviewer ? ` by ${hitl.reviewer}` : ''}${hitl.sla ? ` (SLA: ${hitl.sla})` : ''}`;
+          const split = doc.splitTextToSize(oversight, 160);
+          doc.text(split, 30, yPosition);
+          yPosition += split.length * 4 + 1;
+        }
       }
 
       yPosition += 5;
@@ -468,6 +595,7 @@ export function exportToPDF(blueprint: Blueprint, filename?: string, canvasImage
 
   addNodeSection('Triggers', triggerNodes);
   addNodeSection('Work Nodes', workNodes);
+  addNodeSection('Agentic Patterns', agenticNodes);
   addNodeSection('Decision Points', decisionNodes);
   addNodeSection('Sub-Workflows', workflowNodes);
   addNodeSection('End Points', endNodes);

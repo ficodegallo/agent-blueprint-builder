@@ -10,7 +10,8 @@ export type AIFeatureKey =
   | 'bestPracticesAnalysis'
   | 'goalEvaluate'
   | 'taskAutoOrder'
-  | 'apiDiscovery';
+  | 'apiDiscovery'
+  | 'interviewer';
 
 export interface AIFeaturePrompts {
   systemPrompt: string;
@@ -90,6 +91,16 @@ export function getFeatureConfigs(): AIFeatureConfig[] {
       placeholders: [
         { token: '{{BEST_PRACTICES_TEXT}}', description: 'User-defined best practices text' },
         { token: '{{BLUEPRINT_TEXT}}', description: 'Serialized blueprint description' },
+      ],
+    },
+    {
+      key: 'interviewer',
+      label: 'Interviewer',
+      description: 'Interviews a process owner and builds/stress-tests the blueprint live on the canvas.',
+      placeholders: [
+        { token: '{{MODE_INSTRUCTIONS}}', description: 'Mode-specific instructions (Discovery or Grill)' },
+        { token: '{{PROCESS_CONTEXT}}', description: 'What the user said they want to work on' },
+        { token: '{{BLUEPRINT_STATE}}', description: 'Compact serialization of the current canvas' },
       ],
     },
   ];
@@ -188,6 +199,82 @@ Generate a JSON object with this exact structure:
           "ai_confidence": "high | medium | low",
           "ai_notes": "string",
           "ai_generated": true
+
+          // For orchestrator nodes (manager agent + dynamic worker pool):
+          "nodeType": "orchestrator",
+          "name": "string",
+          "goal": "string",
+          "delegationStrategy": "string - how the manager decomposes and assigns work",
+          "workers": [{"id": "string", "name": "string", "description": "string - what this worker handles and when", "skills": ["string"]}],
+          "synthesis": "string - how worker outputs combine",
+          "terminationCondition": "string - REQUIRED: when the manager stops",
+          "maxIterations": "string",
+          "budget": "string",
+          "inputs": [{"name": "string", "required": boolean}],
+          "outputs": [{"name": "string", "required": boolean}],
+          "successCriteria": ["string"],
+          "hitl": {"mode": "none | notify | sampled | approval", "reviewer": "string", "sla": "string", "samplingRate": "string", "escalationPath": "string"},
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For agentLoop nodes (one autonomous agent with skills/tools):
+          "nodeType": "agentLoop",
+          "name": "string",
+          "goal": "string",
+          "inputs": [{"name": "string", "required": boolean}],
+          "outputs": [{"name": "string", "required": boolean}],
+          "maxIterations": "string",
+          "memory": "string - context the agent keeps across iterations",
+          "integrations": ["string"],
+          "skills": ["string"],
+          "tools": ["string"],
+          "stopCondition": "string - REQUIRED: when the agent stops",
+          "guardrails": ["string"],
+          "successCriteria": ["string"],
+          "failureHandling": "string",
+          "hitl": {"mode": "none | notify | sampled | approval", "reviewer": "string", "sla": "string", "samplingRate": "string", "escalationPath": "string"},
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For router nodes (model-driven classification, unlike rule-based decision):
+          "nodeType": "router",
+          "name": "string",
+          "description": "string",
+          "classifierInstructions": "string - how the model decides the route",
+          "routes": [{"id": "string", "label": "string", "description": "string - what belongs on this route"}],
+          "fallbackRoute": "string - route label for low-confidence items",
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For parallel nodes (fan-out/fan-in):
+          "nodeType": "parallel",
+          "name": "string",
+          "mode": "split | join",
+          "description": "string",
+          "branches": [{"id": "string", "label": "string", "description": "string"}], // split mode only
+          "joinBehavior": "wait-all | wait-any | merge-results", // join mode only
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
+
+          // For evaluatorOptimizer nodes (generate -> evaluate -> iterate until quality passes):
+          "nodeType": "evaluatorOptimizer",
+          "name": "string",
+          "goal": "string",
+          "generatorDescription": "string",
+          "evaluatorCriteria": ["string - verifiable checks"],
+          "passCondition": "string",
+          "maxIterations": "string",
+          "onMaxIterations": "string - e.g. escalate to human review",
+          "inputs": [{"name": "string", "required": boolean}],
+          "outputs": [{"name": "string", "required": boolean}],
+          "hitl": {"mode": "none | notify | sampled | approval", "reviewer": "string", "sla": "string", "samplingRate": "string", "escalationPath": "string"},
+          "ai_confidence": "high | medium | low",
+          "ai_notes": "string",
+          "ai_generated": true
         }
       }
     ],
@@ -204,45 +291,63 @@ Generate a JSON object with this exact structure:
 }
 \`\`\`
 
+## Choosing the right pattern
+
+Prefer the SIMPLEST pattern that fits — most processes are deterministic pipelines of work nodes:
+- Fixed, known steps → chain of "work" nodes (agent / automation / human)
+- Rule-based branching ("if amount > $10k") → "decision" node
+- Judgment-based classification ("what kind of request is this?") → "router" node
+- Independent steps that can run at the same time → "parallel" split + join pair
+- Output that must iterate until it meets a quality bar → "evaluatorOptimizer" node
+- Work that must be decomposed dynamically across specialists at runtime → "orchestrator" node
+- Open-ended task where the steps cannot be known in advance → "agentLoop" node
+Do NOT use orchestrator or agentLoop when the steps are known in advance — a deterministic flow is cheaper, more reliable, and easier to review.
+
 ## Requirements
 
 1. Start with exactly one trigger node
 2. End with at least one end node
 3. All nodes except trigger must have incoming edges
 4. All nodes except end must have outgoing edges
-5. Decision nodes must have exactly 2 outgoing edges (yes/no branches)
-6. Use ai_confidence to indicate your certainty:
+5. Decision nodes need one outgoing edge per condition (sourceHandle = condition id); router nodes need one outgoing edge per route (sourceHandle = route id); parallel split nodes need one outgoing edge per branch (sourceHandle = branch id)
+6. Every parallel split must have a matching parallel join downstream
+7. Every orchestrator must have a terminationCondition; every agentLoop must have a stopCondition
+8. Any node whose action is hard to reverse or outward-facing (sending to customers, moving money, deleting records) must have hitl.mode "approval" with a reviewer
+9. Use ai_confidence to indicate your certainty:
    - "high": Clear from documentation
    - "medium": Reasonable inference
    - "low": Significant assumption or unclear
-7. Use ai_notes to explain any assumptions or uncertainties
-8. Always set ai_generated to true for all nodes
+10. Use ai_notes to explain any assumptions or uncertainties
+11. Always set ai_generated to true for all nodes
 
 Respond ONLY with the JSON object. No additional text.`,
   },
 
   goalEvaluate: {
-    systemPrompt: `You are an expert business process designer who specializes in writing strong, outcome-focused goals for workflow nodes.
+    systemPrompt: `You are an expert agent and workflow designer who specializes in writing strong goals for AI agents and automated workflow steps.
 
-Your job is to evaluate a goal statement and suggest an improved version if needed.
+Your job is to evaluate a goal statement against the goal contract and suggest an improved version if needed.
 
-Rules for strong goals:
-1. Focus on OUTCOMES, not activities (e.g., "Ensure accurate employee data is updated in all downstream systems" not "Process the data")
-2. Be specific about what success looks like
-3. Include measurable or verifiable criteria when possible
-4. Reference the business value or impact
-5. Avoid vague verbs like "process", "handle", "manage" without specifics
+A strong agent goal is a CONTRACT with four parts:
+1. OBJECTIVE — one concrete outcome, not an activity. "Ensure every supplier invoice is matched to a PO and posted within 24 hours" beats "Process invoices". Avoid vague verbs ("process", "handle", "manage", "support") without specifics.
+2. CONSTRAINTS — what must NOT happen or change (systems not to touch, actions requiring approval, data that must not leave).
+3. VALIDATION — how success is verified: a check a human or system could actually run against the output.
+4. STOP CONDITION — when the work is done, stated verifiably ("stop when X passes" or "stop when further progress needs human input"), so an agent neither quits early nor runs forever.
+
+Not every goal needs all four spelled out, but a goal with no verifiable outcome and no sense of "done" is weak.
 
 Rate the goal as:
-- "strong": Clear outcome focus, specific, measurable — little or no improvement needed
-- "moderate": Has some outcome language but could be more specific or impactful
-- "weak": Task-centric, vague, or missing outcome focus
+- "strong": Concrete outcome, verifiable success, clear sense of done — little or no improvement needed
+- "moderate": Outcome is stated but validation or the stop condition is fuzzy
+- "weak": Activity-centric, vague, unverifiable, or open-ended
+
+When you suggest an improvement, keep it concise (1-3 sentences) and grounded in the node's actual tasks, inputs, and outputs — do not invent capabilities the node doesn't have.
 
 Return ONLY a JSON object with this exact structure:
 {
   "rating": "strong" | "moderate" | "weak",
   "suggestion": "The improved goal text",
-  "reasoning": "Brief explanation of what was improved and why (1-2 sentences)"
+  "reasoning": "Brief explanation of what was improved and why, referencing the contract parts that were missing (1-2 sentences)"
 }`,
     userPromptTemplate: `Evaluate and improve this goal for a workflow node:
 
@@ -341,6 +446,63 @@ Inputs: {{INPUTS}}
 Outputs: {{OUTPUTS}}
 
 Return ONLY the JSON array of suggested endpoints.`,
+  },
+
+  interviewer: {
+    systemPrompt: `You are an expert process analyst interviewing a process owner to design an agentic workflow blueprint on a visual canvas. The canvas updates live as you work: every response you give can both ask a question AND apply changes to the canvas.
+
+## Interview discipline (hard rules)
+1. Ask exactly ONE question per turn. Never bundle two questions, even related ones.
+2. Patch the canvas BEFORE asking the next question — capture what the person just told you as nodes/edges in the same response.
+3. Questions are concrete over abstract: "What happens when the approver doesn't respond within a day?" beats "Tell me about exceptions."
+4. Each question should surface information you don't already have. Never ask something the canvas already answers.
+5. When the person lists items, treat the list as an UNORDERED SET. Never infer sequence or priority from the order they said it — if order matters, ask.
+6. Do not invent process details. Nodes you create must reflect what the person actually said; mark inferences with ai_confidence "low" and explain in ai_notes.
+7. Keep acknowledgments short. No flattery, no filler.
+
+## Choosing patterns for what you hear
+Prefer the simplest structure: fixed steps → work nodes (agent/automation/human); rule-based branching → decision; judgment-based classification → router; simultaneous independent steps → parallel split+join; iterate-until-quality → evaluatorOptimizer; dynamic decomposition across specialists → orchestrator; open-ended tasks → agentLoop. Any irreversible outward-facing action needs hitl.mode "approval".
+
+## Coverage areas
+Track these until each is covered: trigger (what starts it), steps (the work itself), systems (tools/integrations touched), decisions (branch points and rules), exceptions (what goes wrong and who handles it), volumes (how often, how many, SLAs), oversight (where humans review/approve).
+
+## Response format
+Respond ONLY with a JSON object, no other text:
+{
+  "message": "short acknowledgment of what you captured + exactly one question",
+  "actions": [
+    {"op": "addNode", "id": "unique-id", "data": { /* node data object, same schema as the canvas */ }},
+    {"op": "updateNode", "id": "existing-id", "data": { /* partial fields to change */ }},
+    {"op": "addEdge", "source": "id", "target": "id", "sourceHandle": "condition/route/branch id when branching", "label": "optional"},
+    {"op": "removeNode", "id": "existing-id"},
+    {"op": "removeEdge", "source": "id", "target": "id"}
+  ],
+  "coverage": {"trigger": "missing|partial|covered", "steps": "...", "systems": "...", "decisions": "...", "exceptions": "...", "volumes": "...", "oversight": "..."},
+  "done": false
+}
+
+Node data objects must include "nodeType" and "name". Node schemas by type:
+- trigger: {nodeType, name, triggerType: "event|scheduled|manual", description, configuration}
+- work: {nodeType, name, workerType: "agent|automation|human", goal, inputs: [{name, required}], tasks: [string], outputs: [{name, required}], integrations: [string], guardrails?: [string], successCriteria?: [string], hitl?: {mode, reviewer, sla, samplingRate, escalationPath}}
+- decision: {nodeType, name, description, conditions: [{id, label, description}]}
+- router: {nodeType, name, description, classifierInstructions, routes: [{id, label, description}], fallbackRoute}
+- parallel: {nodeType, name, mode: "split|join", description, branches: [{id, label, description}], joinBehavior: "wait-all|wait-any|merge-results"}
+- orchestrator: {nodeType, name, goal, delegationStrategy, workers: [{id, name, description, skills: [string]}], synthesis, terminationCondition, maxIterations, budget, inputs, outputs, hitl?}
+- agentLoop: {nodeType, name, goal, inputs, outputs, maxIterations, memory, integrations: [string], skills: [string], tools: [string], stopCondition, guardrails?: [string], successCriteria?: [string], failureHandling?, hitl?}
+- evaluatorOptimizer: {nodeType, name, goal, generatorDescription, evaluatorCriteria: [string], passCondition, maxIterations, onMaxIterations, inputs, outputs, hitl?}
+- end: {nodeType, name, description, outcome}
+Always set ai_generated: true and an ai_confidence on nodes you create.
+
+Set "done": true only when every coverage area is covered (or the person says they're done) — then "message" should be a brief summary of the blueprint and any remaining low-confidence areas, with no question.`,
+    userPromptTemplate: `{{MODE_INSTRUCTIONS}}
+
+## What the process owner said to start
+{{PROCESS_CONTEXT}}
+
+## Current canvas state
+{{BLUEPRINT_STATE}}
+
+Begin the interview. Remember: respond only with the JSON object.`,
   },
 
   bestPracticesAnalysis: {

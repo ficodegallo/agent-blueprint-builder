@@ -1,4 +1,4 @@
-import { Zap, Bot, Cog, User, GitBranch, Workflow } from 'lucide-react';
+import { Zap, Bot, Cog, User, GitBranch, Workflow, Network } from 'lucide-react';
 import { useNodesStore } from '../../store';
 import { TEMPLATES, TEMPLATE_CATEGORIES, type NodeTemplate } from '../../data/templates';
 import type { NodeData } from '../../types';
@@ -9,6 +9,7 @@ const CATEGORY_ICONS = {
   automation: Cog,
   human: User,
   workflow: Workflow,
+  agentic: Network,
   flow: GitBranch,
 } as const;
 
@@ -18,6 +19,7 @@ const CATEGORY_COLORS = {
   automation: 'bg-yellow-500',
   human: 'bg-blue-500',
   workflow: 'bg-purple-500',
+  agentic: 'bg-indigo-500',
   flow: 'bg-gray-500',
 } as const;
 

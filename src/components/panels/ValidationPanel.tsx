@@ -2,7 +2,6 @@ import { AlertCircle, AlertTriangle, CheckCircle, ChevronDown, ChevronRight, Loa
 import { useState } from 'react';
 import { useValidation } from '../../hooks/useValidation';
 import { useBestPracticesAnalysis } from '../../hooks/useBestPracticesAnalysis';
-import { hasBestPractices } from '../../utils/bestPracticesStorage';
 import { useUIStore, useNodesStore, useEdgesStore } from '../../store';
 import type { ValidationIssue } from '../../utils/validation';
 
@@ -63,7 +62,8 @@ export function ValidationPanel() {
     analyzeBestPractices(nodes, edges);
   };
 
-  const showBPButton = hasBestPractices();
+  // Built-in rulebook always applies, so the AI check is always available
+  const showBPButton = true;
   const totalIssues = all.length + bpWarnings.length;
 
   return (

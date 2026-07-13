@@ -1,0 +1,180 @@
+{
+  "version": "1.0",
+  "exportedAt": "2026-07-06T00:00:00.000Z",
+  "blueprint": {
+    "id": "6f1c2f2e-1111-4222-8333-944455566677",
+    "title": "Supplier Invoice Intake & Approval",
+    "description": "Receives supplier invoices by email, extracts and validates line items, routes by complexity, and posts approved invoices to NetSuite with human approval on all payments.",
+    "clientName": "Example Corp",
+    "projectName": "AP Automation Phase 1",
+    "impactedAudiences": ["Accounts Payable team", "Approving managers", "Suppliers"],
+    "businessBenefits": ["Cut invoice cycle time from 9 days to 2", "Free ~20 AP hours/week", "Fewer duplicate payments"],
+    "clientContacts": ["Jane Doe (AP Manager)"],
+    "createdBy": "blueprinter-skill",
+    "lastModifiedBy": "blueprinter-skill",
+    "lastModifiedDate": "2026-07-06T00:00:00.000Z",
+    "version": "1.0",
+    "status": "Draft",
+    "changeLog": [
+      {"id": "cl-1", "timestamp": "2026-07-06T00:00:00.000Z", "author": "blueprinter-skill", "description": "Initial draft from interview"}
+    ],
+    "nodes": [
+      {
+        "id": "trigger-email",
+        "type": "trigger",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "trigger",
+          "name": "Invoice Email Received",
+          "triggerType": "event",
+          "description": "New email lands in ap-invoices@ inbox with a PDF attachment",
+          "configuration": "Mailbox webhook; ~120 invoices/week"
+        }
+      },
+      {
+        "id": "extract-agent",
+        "type": "work",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "work",
+          "name": "Invoice Extraction Agent",
+          "workerType": "agent",
+          "goal": "Every invoice PDF is converted to structured line items with totals that reconcile to the document, within 5 minutes of receipt",
+          "inputs": [{"name": "Invoice PDF", "required": true}],
+          "tasks": ["Extract header fields (supplier, date, PO number, totals)", "Extract line items", "Reconcile line items against stated totals"],
+          "outputs": [{"name": "Structured invoice record", "required": true}],
+          "integrations": [
+            {"name": "NetSuite", "action": "Look up supplier and PO records", "inputs": [], "outputs": [], "apiEndpoints": [{"id": "ep-1", "url": "https://api.netsuite.com/v1/vendors", "method": "GET"}]}
+          ],
+          "description": "Extracts structured data from supplier invoice PDFs. Use for supplier invoices only; expense receipts go to the T&E flow.",
+          "skills": ["PDF extraction", "PO matching"],
+          "autonomyLevel": "guided",
+          "guardrails": ["Never modify NetSuite records", "Never guess a PO number"],
+          "successCriteria": ["Line-item sum equals invoice total", "Supplier matched to an active vendor record"],
+          "failureHandling": "After 2 failed extraction attempts, route to AP exception queue with the original PDF",
+          "hitl": {"mode": "sampled", "reviewer": "AP Analyst", "sla": "", "samplingRate": "10% of extractions", "escalationPath": "Failed samples trigger review of the previous 20 invoices"}
+        }
+      },
+      {
+        "id": "triage-router",
+        "type": "router",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "router",
+          "name": "Complexity Triage",
+          "description": "Classifies each extracted invoice by handling complexity",
+          "classifierInstructions": "Pick exactly one route from the descriptions. If confidence is low, use Exception.",
+          "routes": [
+            {"id": "route-clean", "label": "Clean", "description": "PO matched, totals reconcile, supplier in good standing"},
+            {"id": "route-review", "label": "Needs Review", "description": "Minor discrepancies: totals off by <2%, missing PO but known supplier"},
+            {"id": "route-exception", "label": "Exception", "description": "Unknown supplier, large discrepancies, or anything unusual"}
+          ],
+          "fallbackRoute": "Exception"
+        }
+      },
+      {
+        "id": "post-automation",
+        "type": "work",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "work",
+          "name": "Post to NetSuite",
+          "workerType": "automation",
+          "goal": "Approved invoice records are posted to NetSuite AP with correct GL coding",
+          "inputs": [{"name": "Approved invoice record", "required": true}],
+          "tasks": ["Create AP bill", "Attach source PDF", "Update invoice status"],
+          "outputs": [{"name": "NetSuite bill ID", "required": true}],
+          "integrations": ["NetSuite"],
+          "hitl": {"mode": "none", "reviewer": "", "sla": "", "samplingRate": "", "escalationPath": ""}
+        }
+      },
+      {
+        "id": "review-loop",
+        "type": "evaluatorOptimizer",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "evaluatorOptimizer",
+          "name": "Discrepancy Resolution Loop",
+          "goal": "Produce a corrected invoice record that reconciles, or a documented reason it cannot",
+          "generatorDescription": "Agent proposes corrections (re-extraction, PO re-match, tolerance application)",
+          "evaluatorCriteria": ["Totals reconcile within tolerance", "PO matched or absence justified", "Supplier verified"],
+          "passCondition": "All criteria met",
+          "maxIterations": "3 rounds",
+          "onMaxIterations": "Escalate to AP exception queue with best attempt and evaluator feedback",
+          "inputs": [{"name": "Discrepant invoice record", "required": true}],
+          "outputs": [{"name": "Corrected invoice record", "required": true}]
+        }
+      },
+      {
+        "id": "exception-human",
+        "type": "work",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "work",
+          "name": "AP Exception Handling",
+          "workerType": "human",
+          "goal": "Every exception invoice is resolved (corrected, disputed with supplier, or rejected) within 2 business days",
+          "inputs": [{"name": "Exception invoice + context", "required": true}],
+          "tasks": ["Investigate discrepancy", "Contact supplier if needed", "Correct or reject the invoice"],
+          "outputs": [{"name": "Resolved invoice record", "required": true}],
+          "integrations": ["NetSuite", "Email"]
+        }
+      },
+      {
+        "id": "approval-gate",
+        "type": "work",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "work",
+          "name": "Payment Approval",
+          "workerType": "human",
+          "goal": "Every payment above policy threshold is approved by an authorized manager before posting",
+          "inputs": [{"name": "Validated invoice record", "required": true}],
+          "tasks": ["Review invoice summary and flags", "Approve or reject"],
+          "outputs": [{"name": "Approval decision", "required": true}],
+          "integrations": ["Slack"],
+          "hitl": {"mode": "approval", "reviewer": "Approving Manager", "sla": "8 business hours", "samplingRate": "", "escalationPath": "Timeout escalates to Finance Director; rejection returns to AP Exception Handling"}
+        }
+      },
+      {
+        "id": "end-posted",
+        "type": "end",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "end",
+          "name": "Invoice Posted",
+          "description": "",
+          "outcome": "Invoice posted to NetSuite AP, supplier notified, audit trail complete"
+        }
+      },
+      {
+        "id": "end-rejected",
+        "type": "end",
+        "position": {"x": 0, "y": 0},
+        "data": {
+          "nodeType": "end",
+          "name": "Invoice Rejected",
+          "description": "",
+          "outcome": "Invoice rejected with documented reason; supplier notified",
+          "ai_generated": true,
+          "ai_confidence": "low",
+          "ai_notes": "Owner did not describe the rejection path; assumed supplier notification is required"
+        }
+      }
+    ],
+    "edges": [
+      {"id": "e1", "source": "trigger-email", "target": "extract-agent", "data": {"conditionLabel": "", "description": ""}},
+      {"id": "e2", "source": "extract-agent", "target": "triage-router", "data": {"conditionLabel": "", "description": ""}},
+      {"id": "e3", "source": "triage-router", "target": "approval-gate", "sourceHandle": "route-clean", "data": {"conditionLabel": "Clean", "description": ""}},
+      {"id": "e4", "source": "triage-router", "target": "review-loop", "sourceHandle": "route-review", "data": {"conditionLabel": "Needs Review", "description": ""}},
+      {"id": "e5", "source": "triage-router", "target": "exception-human", "sourceHandle": "route-exception", "data": {"conditionLabel": "Exception", "description": ""}},
+      {"id": "e6", "source": "review-loop", "target": "approval-gate", "data": {"conditionLabel": "Passed", "description": ""}},
+      {"id": "e7", "source": "exception-human", "target": "approval-gate", "data": {"conditionLabel": "Resolved", "description": ""}},
+      {"id": "e8", "source": "exception-human", "target": "end-rejected", "data": {"conditionLabel": "Rejected", "description": ""}},
+      {"id": "e9", "source": "approval-gate", "target": "post-automation", "data": {"conditionLabel": "Approved", "description": ""}},
+      {"id": "e10", "source": "post-automation", "target": "end-posted", "data": {"conditionLabel": "", "description": ""}}
+    ],
+    "comments": [],
+    "parkingLot": []
+  }
+}

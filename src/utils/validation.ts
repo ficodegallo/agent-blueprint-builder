@@ -26,6 +26,8 @@ const ERROR_CODES = {
   DISCONNECTED_NODE: 'E003',
   MISSING_GOAL: 'E004',
   UNREACHABLE_NODE: 'E005',
+  MISSING_TERMINATION: 'E006',
+  MISSING_STOP_CONDITION: 'E007',
 } as const;
 
 // Warning codes
@@ -36,6 +38,10 @@ const WARNING_CODES = {
   FEW_DECISION_BRANCHES: 'W004',
   LONG_CHAIN: 'W005',
   BROKEN_WORKFLOW_LINK: 'W006',
+  FEW_ROUTER_ROUTES: 'W007',
+  NO_EVALUATOR_CRITERIA: 'W008',
+  SPLIT_WITHOUT_JOIN: 'W009',
+  NO_ORCHESTRATOR_WORKERS: 'W010',
 } as const;
 
 export function validateBlueprint(
@@ -176,6 +182,77 @@ export function validateBlueprint(
       }
     }
 
+    // Orchestrator: open-ended delegation loops are a common failure mode
+    if (node.data.nodeType === 'orchestrator') {
+      const term = (node.data as Record<string, unknown>).terminationCondition as string | undefined;
+      if (!term || term.trim() === '') {
+        errors.push({
+          id: `${ERROR_CODES.MISSING_TERMINATION}-${node.id}`,
+          severity: 'error',
+          code: ERROR_CODES.MISSING_TERMINATION,
+          message: `Orchestrator "${node.data.name}" has no termination condition`,
+          nodeId: node.id,
+          nodeName: node.data.name,
+        });
+      }
+      const workers = (node.data as Record<string, unknown>).workers as unknown[] | undefined;
+      if (!workers || workers.length === 0) {
+        warnings.push({
+          id: `${WARNING_CODES.NO_ORCHESTRATOR_WORKERS}-${node.id}`,
+          severity: 'warning',
+          code: WARNING_CODES.NO_ORCHESTRATOR_WORKERS,
+          message: `Orchestrator "${node.data.name}" has no workers defined`,
+          nodeId: node.id,
+          nodeName: node.data.name,
+        });
+      }
+    }
+
+    // Agent loop: must know when to stop
+    if (node.data.nodeType === 'agentLoop') {
+      const stop = (node.data as Record<string, unknown>).stopCondition as string | undefined;
+      if (!stop || stop.trim() === '') {
+        errors.push({
+          id: `${ERROR_CODES.MISSING_STOP_CONDITION}-${node.id}`,
+          severity: 'error',
+          code: ERROR_CODES.MISSING_STOP_CONDITION,
+          message: `Agent loop "${node.data.name}" has no stop condition`,
+          nodeId: node.id,
+          nodeName: node.data.name,
+        });
+      }
+    }
+
+    // Router: needs at least 2 routes to be meaningful
+    if (node.data.nodeType === 'router') {
+      const routes = (node.data as Record<string, unknown>).routes as unknown[] | undefined;
+      if (!routes || routes.length < 2) {
+        warnings.push({
+          id: `${WARNING_CODES.FEW_ROUTER_ROUTES}-${node.id}`,
+          severity: 'warning',
+          code: WARNING_CODES.FEW_ROUTER_ROUTES,
+          message: `Router "${node.data.name}" has fewer than 2 routes`,
+          nodeId: node.id,
+          nodeName: node.data.name,
+        });
+      }
+    }
+
+    // Evaluator-optimizer: an evaluator without criteria can't evaluate
+    if (node.data.nodeType === 'evaluatorOptimizer') {
+      const criteria = (node.data as Record<string, unknown>).evaluatorCriteria as unknown[] | undefined;
+      if (!criteria || criteria.length === 0) {
+        warnings.push({
+          id: `${WARNING_CODES.NO_EVALUATOR_CRITERIA}-${node.id}`,
+          severity: 'warning',
+          code: WARNING_CODES.NO_EVALUATOR_CRITERIA,
+          message: `Evaluator loop "${node.data.name}" has no evaluator criteria`,
+          nodeId: node.id,
+          nodeName: node.data.name,
+        });
+      }
+    }
+
     // Workflow node: check for broken cross-blueprint link
     if (node.data.nodeType === 'workflow' && existingBlueprintIds) {
       const wfId = (node.data as Record<string, unknown>).workflowId as string | undefined;
@@ -191,6 +268,22 @@ export function validateBlueprint(
       }
     }
   });
+
+  // Blueprint-level: parallel split without a downstream join
+  const splits = nodes.filter(
+    (n) => n.data.nodeType === 'parallel' && (n.data as Record<string, unknown>).mode === 'split'
+  );
+  const joins = nodes.filter(
+    (n) => n.data.nodeType === 'parallel' && (n.data as Record<string, unknown>).mode === 'join'
+  );
+  if (splits.length > 0 && joins.length === 0) {
+    warnings.push({
+      id: `${WARNING_CODES.SPLIT_WITHOUT_JOIN}-global`,
+      severity: 'warning',
+      code: WARNING_CODES.SPLIT_WITHOUT_JOIN,
+      message: 'Blueprint has a parallel split but no parallel join — branches never converge',
+    });
+  }
 
   const all = [...errors, ...warnings];
   const isValid = errors.length === 0;
