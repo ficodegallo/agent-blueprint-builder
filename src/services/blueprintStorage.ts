@@ -1,5 +1,5 @@
-import { isSupabaseConfigured } from '../lib/supabase';
-import { fetchAllBlueprints, upsertBlueprint, deleteBlueprintRemote } from '../lib/supabaseBlueprints';
+import { isApiConfigured } from '../lib/apiConfig';
+import { fetchAllBlueprints, upsertBlueprint, deleteBlueprintRemote } from '../lib/apiBlueprints';
 import type { Blueprint } from '../types';
 
 export type SyncStatus = 'synced' | 'pending' | 'offline' | 'error';
@@ -73,18 +73,18 @@ function removePending(id: string): void {
 // --- Public API ---
 
 export async function loadAll(): Promise<{ blueprints: Map<string, Blueprint>; syncStatus: SyncStatus }> {
-  if (!isSupabaseConfigured()) {
+  if (!isApiConfigured()) {
     return { blueprints: readCache(), syncStatus: 'offline' };
   }
 
   const { data, error } = await fetchAllBlueprints();
 
   if (error || !data) {
-    // Supabase unavailable — serve from cache
+    // API unavailable — serve from cache
     return { blueprints: readCache(), syncStatus: 'error' };
   }
 
-  // Merge: Supabase is source of truth, but include any pending local items
+  // Merge: the API is source of truth, but include any pending local items
   const map = new Map<string, Blueprint>();
   for (const bp of data) {
     map.set(bp.id, bp);
@@ -111,7 +111,7 @@ export async function save(id: string, bp: Blueprint): Promise<SyncStatus> {
   cache.set(id, bp);
   writeCache(cache);
 
-  if (!isSupabaseConfigured()) return 'offline';
+  if (!isApiConfigured()) return 'offline';
 
   const { error } = await upsertBlueprint(bp);
   if (error) {
@@ -130,12 +130,12 @@ export async function remove(id: string): Promise<SyncStatus> {
   writeCache(cache);
   removePending(id);
 
-  if (!isSupabaseConfigured()) return 'offline';
+  if (!isApiConfigured()) return 'offline';
 
   const { error } = await deleteBlueprintRemote(id);
   if (error) {
     // Item is already removed locally, log but don't block
-    console.warn('Failed to delete from Supabase:', error);
+    console.warn('Failed to delete from API:', error);
     return 'error';
   }
 
@@ -143,7 +143,7 @@ export async function remove(id: string): Promise<SyncStatus> {
 }
 
 export async function syncPending(): Promise<SyncStatus> {
-  if (!isSupabaseConfigured()) return 'offline';
+  if (!isApiConfigured()) return 'offline';
 
   const pending = readPending();
   if (pending.size === 0) return 'synced';

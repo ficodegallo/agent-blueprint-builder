@@ -16,7 +16,7 @@ export function HomePage() {
   const addBlueprint = useBlueprintsLibraryStore((state) => state.addBlueprint);
   const loadFromServer = useBlueprintsLibraryStore((state) => state.loadFromServer);
 
-  // Refresh from Supabase on mount
+  // Refresh from the persistence API on mount
   useEffect(() => {
     loadFromServer();
   }, [loadFromServer]);
