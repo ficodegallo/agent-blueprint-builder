@@ -5,7 +5,6 @@ import './index.css';
 
 import { HomePage } from './components/pages/HomePage';
 import { BlueprintEditor } from './components/pages/BlueprintEditor';
-import { migrateToSupabase } from './utils/migrateToSupabase';
 import { useBlueprintsLibraryStore } from './store/blueprintsLibraryStore';
 
 function App() {
@@ -13,8 +12,8 @@ function App() {
   const retrySyncPending = useBlueprintsLibraryStore((state) => state.retrySyncPending);
 
   useEffect(() => {
-    // Run migration then hydrate from Supabase
-    migrateToSupabase().then(() => loadFromServer());
+    // Hydrate from the persistence API (falls back to local cache offline)
+    loadFromServer();
 
     // Sync pending changes when coming back online
     const handleOnline = () => {

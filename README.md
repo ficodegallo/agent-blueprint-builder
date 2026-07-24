@@ -142,6 +142,10 @@ src/
 └── constants/         # App constants and configuration
 ```
 
+## ☁️ Hosted Deployment (Railway + Vercel)
+
+Blueprints persist to a Railway-hosted Postgres database through serverless API routes deployed with the app on Vercel — localStorage remains the offline cache. See [docs/deployment.md](docs/deployment.md) for the full setup (provision Postgres, `npm run db:migrate`, deploy, set `DATABASE_URL` + `API_TOKEN`, paste the token into Sync Settings in the app header).
+
 ## 🤝 Contributing
 
 Contributions are welcome! This project was built with [Claude Code](https://claude.com/claude-code).

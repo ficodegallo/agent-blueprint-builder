@@ -12,11 +12,11 @@
     "test:run": "vitest run",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "db:migrate": "node scripts/db-migrate.mjs"
   },
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
-    "@supabase/supabase-js": "^2.98.0",
     "@xyflow/react": "^12.10.0",
     "docx": "^9.5.3",
     "jspdf": "^4.1.0",
@@ -24,6 +24,7 @@
     "lucide-react": "^0.563.0",
     "mammoth": "^1.11.0",
     "pdfjs-dist": "^5.4.624",
+    "pg": "^8.22.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "react-router-dom": "^7.13.0",
@@ -38,9 +39,11 @@
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^24.10.1",
+    "@types/pg": "^8.20.0",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@types/uuid": "^10.0.0",
+    "@vercel/node": "^5.8.26",
     "@vitejs/plugin-react-swc": "^4.2.2",
     "eslint": "^9.39.1",
     "eslint-plugin-react-hooks": "^7.0.1",

@@ -1,9 +1,11 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList, MessageCircleQuestion } from 'lucide-react';
+import { useState } from 'react';
+import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList, MessageCircleQuestion, Settings2 } from 'lucide-react';
 import { useBlueprintStore, useUIStore, useParkingLotStore, selectUnresolvedParkingLotCount } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 import type { SyncStatus } from '../../services/blueprintStorage';
 import { NodeSearch } from './NodeSearch';
+import { SyncSettingsDialog } from '../dialogs/SyncSettingsDialog';
 
 const syncConfig: Record<SyncStatus, { color: string; pulse: boolean; tooltip: string }> = {
   synced: { color: 'bg-green-500', pulse: false, tooltip: 'Saved to cloud' },
@@ -33,6 +35,7 @@ export function Header({ showBackButton = false }: HeaderProps) {
   const parentBlueprint = fromBlueprintId ? getBlueprint(fromBlueprintId) : undefined;
 
   const sync = syncConfig[syncStatus];
+  const [isSyncSettingsOpen, setIsSyncSettingsOpen] = useState(false);
 
   const handleSyncClick = () => {
     if (syncStatus === 'error' || syncStatus === 'pending') {
@@ -75,6 +78,13 @@ export function Header({ showBackButton = false }: HeaderProps) {
             {sync.pulse && (
               <span className={`absolute inset-0 rounded-full ${sync.color} animate-ping opacity-75`} />
             )}
+          </button>
+          <button
+            onClick={() => setIsSyncSettingsOpen(true)}
+            title="Sync settings"
+            className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            <Settings2 className="w-3.5 h-3.5" />
           </button>
         </div>
         <span
@@ -143,6 +153,8 @@ export function Header({ showBackButton = false }: HeaderProps) {
           Import
         </button>
       </div>
+
+      <SyncSettingsDialog isOpen={isSyncSettingsOpen} onClose={() => setIsSyncSettingsOpen(false)} />
     </div>
   );
 }
