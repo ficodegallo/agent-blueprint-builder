@@ -1,4 +1,4 @@
-import type { Queryable } from './db';
+import type { Queryable } from './db.js';
 
 /**
  * Server-side blueprint document shape. Mirrors the client's Blueprint type
