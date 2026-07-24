@@ -49,7 +49,7 @@ src/
 
 - `src/App.tsx` - React Router setup with HomePage and BlueprintEditor routes
 - `src/store/nodesStore.ts` - Central node state with React Flow integration
-- `src/store/blueprintsLibraryStore.ts` - Multi-blueprint library management with two-tier persistence (localStorage + Supabase background sync)
+- `src/store/blueprintsLibraryStore.ts` - Multi-blueprint library management with two-tier persistence (localStorage + hosted API background sync)
 - `src/components/canvas/BlueprintCanvas.tsx` - Main canvas with drag-drop support and auto-center to first trigger
 - `src/components/pages/HomePage.tsx` - Blueprint library landing page with search and cards
 - `src/components/pages/BlueprintEditor.tsx` - Main editor with auto-save to library
@@ -525,7 +525,7 @@ Note: All Work node templates now include detailed IntegrationDetail objects wit
 - Comments are stored per-node and included in exports
 - Blueprint metadata includes version, status, change log
 - Detail panel width: 512px (w-[32rem]) - 33% wider for better task visibility
-- **Auto-save**: 1s debounce to library store, which persists to localStorage and syncs to Supabase in the background
+- **Auto-save**: 1s debounce to library store, which persists to localStorage and syncs to the hosted API (Railway Postgres via Vercel serverless functions) in the background
 - **Auto-center**: Canvas automatically centers on first trigger node on blueprint load
 - **Task Management**: ListEditor uses @hello-pangea/dnd for drag-and-drop, useTaskAutoOrder hook for AI reordering
 

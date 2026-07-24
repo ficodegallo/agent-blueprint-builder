@@ -13,7 +13,7 @@ import { isAuthorized } from './auth';
 
 function makeBlueprint(overrides: Partial<BlueprintDoc> = {}): BlueprintDoc {
   return {
-    id: 'bp-1',
+    id: '11111111-1111-4111-8111-111111111111',
     title: 'Test Blueprint',
     description: 'desc',
     clientName: 'Client',
@@ -56,6 +56,12 @@ describe('validateBlueprint', () => {
   it('rejects a missing id', () => {
     const result = validateBlueprint(makeBlueprint({ id: '' }));
     expect(result).toEqual({ ok: false, error: expect.stringContaining('id') });
+  });
+
+  it('rejects a non-UUID id as a 400-shaped error (not an opaque DB 500)', () => {
+    const result = validateBlueprint(makeBlueprint({ id: 'not-a-uuid' }));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.error).toContain('UUID');
   });
 
   it('rejects node type mismatch with data.nodeType', () => {
@@ -131,7 +137,7 @@ describe('upsertBlueprint revision handling', () => {
     expect(query.mock.calls[0][0]).toContain('ON CONFLICT (id) DO UPDATE');
     expect(query.mock.calls[1][0]).toContain('INSERT INTO blueprint_revisions');
     expect(query.mock.calls[2][0]).toContain('DELETE FROM blueprint_revisions');
-    expect(query.mock.calls[2][1]).toEqual(['bp-1', REVISION_CAP]);
+    expect(query.mock.calls[2][1]).toEqual(['11111111-1111-4111-8111-111111111111', REVISION_CAP]);
   });
 });
 
@@ -153,5 +159,16 @@ describe('isAuthorized', () => {
 
   it('uses the first value of a repeated header', () => {
     expect(isAuthorized(['secret', 'other'], 'secret')).toBe(true);
+  });
+
+  it('fails closed in production when no token is configured (P1 security)', () => {
+    // isProduction = true, no configured token -> deny (would otherwise be an
+    // open, world-writable database).
+    expect(isAuthorized('anything', undefined, true)).toBe(false);
+    expect(isAuthorized(undefined, undefined, true)).toBe(false);
+  });
+
+  it('skips auth when no token is configured outside production (local/preview dev)', () => {
+    expect(isAuthorized(undefined, undefined, false)).toBe(true);
   });
 });

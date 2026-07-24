@@ -40,6 +40,13 @@ async function errorMessage(response: Response): Promise<string> {
   }
 }
 
+// A permanent rejection the server will repeat identically (bad request, too
+// large, unprocessable) — callers should not requeue these for retry. 401 is
+// excluded: it clears once the right token is entered.
+function isPermanent(status: number): boolean {
+  return status === 400 || status === 413 || status === 422;
+}
+
 export async function fetchAllBlueprints(): Promise<{ data: Blueprint[] | null; error: string | null }> {
   try {
     const response = await apiFetch('/blueprints?full=1');
@@ -62,13 +69,17 @@ export async function fetchBlueprint(id: string): Promise<{ data: Blueprint | nu
   }
 }
 
-export async function upsertBlueprint(bp: Blueprint): Promise<{ error: string | null }> {
+export async function upsertBlueprint(
+  bp: Blueprint
+): Promise<{ error: string | null; permanent?: boolean }> {
   try {
     const response = await apiFetch(`/blueprints/${encodeURIComponent(bp.id)}`, {
       method: 'PUT',
       body: JSON.stringify(bp),
     });
-    if (!response.ok) return { error: await errorMessage(response) };
+    if (!response.ok) {
+      return { error: await errorMessage(response), permanent: isPermanent(response.status) };
+    }
     return { error: null };
   } catch (err) {
     return { error: err instanceof Error ? err.message : 'Network error' };
@@ -85,9 +96,12 @@ export async function deleteBlueprintRemote(id: string): Promise<{ error: string
   }
 }
 
-export async function checkHealth(): Promise<{ ok: boolean; error: string | null }> {
+export async function checkHealth(
+  tokenOverride?: string
+): Promise<{ ok: boolean; error: string | null }> {
   try {
-    const response = await apiFetch('/health');
+    const headers = tokenOverride ? { 'x-api-key': tokenOverride } : undefined;
+    const response = await apiFetch('/health', headers ? { headers } : undefined);
     if (!response.ok) return { ok: false, error: await errorMessage(response) };
     const body = await response.json();
     return { ok: body.ok === true, error: null };

@@ -34,12 +34,10 @@ export function SyncSettingsDialog({ isOpen, onClose }: Props) {
   };
 
   const handleTest = async () => {
-    const trimmed = token.trim();
-    if (trimmed) setSyncToken(trimmed);
-    else clearSyncToken();
-
+    // Test the typed token without persisting it — Save is the only mutation,
+    // so a failed test followed by Cancel leaves the stored token untouched.
     setTest({ kind: 'testing' });
-    const result = await checkHealth();
+    const result = await checkHealth(token.trim() || undefined);
     setTest(result.ok ? { kind: 'ok' } : { kind: 'fail', message: result.error || 'Connection failed' });
   };
 

@@ -1,9 +1,12 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getPool } from '../../server/db';
+import { applyCors } from '../../server/cors';
 import { isAuthorized } from '../../server/auth';
 import { listBlueprints } from '../../server/blueprints';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  if (applyCors(req, res)) return;
+
   if (!isAuthorized(req.headers['x-api-key'])) {
     return res.status(401).json({ error: 'Unauthorized' });
   }

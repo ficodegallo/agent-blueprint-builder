@@ -6,6 +6,8 @@ export type SyncStatus = 'synced' | 'pending' | 'offline' | 'error';
 
 const CACHE_KEY = 'blueprints-cache';
 const PENDING_KEY = 'blueprints-pending';
+const PENDING_DELETES_KEY = 'blueprints-pending-deletes';
+const MIGRATED_FLAG_KEY = 'blueprints-migrated-to-api';
 
 // --- Local cache helpers ---
 
@@ -70,12 +72,61 @@ function removePending(id: string): void {
   writePending(pending);
 }
 
+// Pending deletes: ids whose remote DELETE failed, retried by syncPending and
+// filtered out on load so a failed delete never resurrects the blueprint.
+function readPendingDeletes(): Set<string> {
+  try {
+    const raw = localStorage.getItem(PENDING_DELETES_KEY);
+    if (!raw) return new Set();
+    return new Set(JSON.parse(raw) as string[]);
+  } catch {
+    return new Set();
+  }
+}
+
+function writePendingDeletes(set: Set<string>): void {
+  localStorage.setItem(PENDING_DELETES_KEY, JSON.stringify(Array.from(set)));
+}
+
+function addPendingDelete(id: string): void {
+  const set = readPendingDeletes();
+  set.add(id);
+  writePendingDeletes(set);
+}
+
+function removePendingDelete(id: string): void {
+  const set = readPendingDeletes();
+  set.delete(id);
+  writePendingDeletes(set);
+}
+
+/**
+ * One-time migration: when the app first runs against a configured API, every
+ * blueprint that exists only in local storage (created offline, or under the
+ * legacy Supabase-less build) is enqueued for upload. Without this, loadAll's
+ * merge would overwrite the cache with the server view and silently drop them.
+ * Guarded by a flag so it runs exactly once — re-running would resurrect
+ * blueprints deleted on another device (there are no server-side tombstones).
+ */
+function migrateLocalBlueprintsOnce(): void {
+  if (localStorage.getItem(MIGRATED_FLAG_KEY)) return;
+  const cache = readCache();
+  for (const id of cache.keys()) {
+    addPending(id);
+  }
+  localStorage.setItem(MIGRATED_FLAG_KEY, new Date().toISOString());
+}
+
 // --- Public API ---
 
 export async function loadAll(): Promise<{ blueprints: Map<string, Blueprint>; syncStatus: SyncStatus }> {
   if (!isApiConfigured()) {
     return { blueprints: readCache(), syncStatus: 'offline' };
   }
+
+  // Seed the pending queue from local storage the first time we run online, so
+  // pre-existing offline/legacy blueprints upload instead of being overwritten.
+  migrateLocalBlueprintsOnce();
 
   const { data, error } = await fetchAllBlueprints();
 
@@ -99,9 +150,16 @@ export async function loadAll(): Promise<{ blueprints: Map<string, Blueprint>; s
     }
   }
 
+  // Drop blueprints whose delete hasn't reached the server yet so a failed
+  // remote DELETE doesn't resurrect them from the server list.
+  const pendingDeletes = readPendingDeletes();
+  for (const id of pendingDeletes) {
+    map.delete(id);
+  }
+
   writeCache(map);
 
-  const syncStatus: SyncStatus = pending.size > 0 ? 'pending' : 'synced';
+  const syncStatus: SyncStatus = pending.size > 0 || pendingDeletes.size > 0 ? 'pending' : 'synced';
   return { blueprints: map, syncStatus };
 }
 
@@ -113,8 +171,11 @@ export async function save(id: string, bp: Blueprint): Promise<SyncStatus> {
 
   if (!isApiConfigured()) return 'offline';
 
-  const { error } = await upsertBlueprint(bp);
+  const { error, permanent } = await upsertBlueprint(bp);
   if (error) {
+    // A permanent rejection (validation / too large) would retry forever and
+    // pin the whole library's sync state — keep it local-only instead.
+    if (permanent) return 'error';
     addPending(id);
     return 'pending';
   }
@@ -134,11 +195,13 @@ export async function remove(id: string): Promise<SyncStatus> {
 
   const { error } = await deleteBlueprintRemote(id);
   if (error) {
-    // Item is already removed locally, log but don't block
-    console.warn('Failed to delete from API:', error);
-    return 'error';
+    // Queue the delete so it retries and the blueprint doesn't reappear on the
+    // next load from the server list.
+    addPendingDelete(id);
+    return 'pending';
   }
 
+  removePendingDelete(id);
   return 'synced';
 }
 
@@ -146,7 +209,8 @@ export async function syncPending(): Promise<SyncStatus> {
   if (!isApiConfigured()) return 'offline';
 
   const pending = readPending();
-  if (pending.size === 0) return 'synced';
+  const pendingDeletes = readPendingDeletes();
+  if (pending.size === 0 && pendingDeletes.size === 0) return 'synced';
 
   const cache = readCache();
   let hadErrors = false;
@@ -159,11 +223,24 @@ export async function syncPending(): Promise<SyncStatus> {
       continue;
     }
 
-    const { error } = await upsertBlueprint(bp);
-    if (error) {
+    const { error, permanent } = await upsertBlueprint(bp);
+    if (permanent) {
+      // Server will reject this identically forever — stop retrying it.
+      removePending(id);
+    } else if (error) {
       hadErrors = true;
     } else {
       removePending(id);
+    }
+  }
+
+  // Retry queued deletes
+  for (const id of pendingDeletes) {
+    const { error } = await deleteBlueprintRemote(id);
+    if (error) {
+      hadErrors = true;
+    } else {
+      removePendingDelete(id);
     }
   }
 

@@ -15,7 +15,7 @@ vi.mock('../lib/apiBlueprints', () => ({
   deleteBlueprintRemote: mocks.deleteBlueprintRemote,
 }));
 
-import { loadAll, save, syncPending } from './blueprintStorage';
+import { loadAll, save, remove, syncPending } from './blueprintStorage';
 
 function makeBlueprint(id: string): Blueprint {
   return { id, title: `BP ${id}` } as Blueprint;
@@ -113,5 +113,76 @@ describe('syncPending', () => {
     expect(status).toBe('error');
     const remaining = JSON.parse(localStorage.getItem('blueprints-pending')!);
     expect(remaining).toHaveLength(1);
+  });
+});
+
+describe('remove', () => {
+  it('deletes locally and returns synced on remote success', async () => {
+    localStorage.setItem('blueprints-cache', JSON.stringify([['a', makeBlueprint('a')]]));
+    const status = await remove('a');
+    expect(status).toBe('synced');
+    expect(JSON.parse(localStorage.getItem('blueprints-cache')!)).toEqual([]);
+  });
+
+  it('queues a pending delete when the remote DELETE fails (no resurrection) (P1)', async () => {
+    localStorage.setItem('blueprints-cache', JSON.stringify([['a', makeBlueprint('a')]]));
+    mocks.deleteBlueprintRemote.mockResolvedValue({ error: 'boom' });
+    const status = await remove('a');
+    expect(status).toBe('pending');
+    expect(JSON.parse(localStorage.getItem('blueprints-pending-deletes')!)).toContain('a');
+  });
+
+  it('returns offline without calling the remote when API is unconfigured', async () => {
+    mocks.isApiConfigured.mockReturnValue(false);
+    localStorage.setItem('blueprints-cache', JSON.stringify([['a', makeBlueprint('a')]]));
+    const status = await remove('a');
+    expect(status).toBe('offline');
+    expect(mocks.deleteBlueprintRemote).not.toHaveBeenCalled();
+  });
+});
+
+describe('one-time local migration (P0)', () => {
+  it('enqueues pre-existing local-only blueprints on first API load so they are not dropped (R5)', async () => {
+    // Blueprint saved while offline: in cache, never in the pending set.
+    localStorage.setItem('blueprints-cache', JSON.stringify([['local-1', makeBlueprint('local-1')]]));
+    // Server has nothing yet (fresh database).
+    mocks.fetchAllBlueprints.mockResolvedValue({ data: [], error: null });
+
+    const result = await loadAll();
+
+    // The local blueprint survives the merge and is queued for upload.
+    expect(result.blueprints.has('local-1')).toBe(true);
+    expect(result.syncStatus).toBe('pending');
+    expect(JSON.parse(localStorage.getItem('blueprints-pending')!)).toContain('local-1');
+    expect(localStorage.getItem('blueprints-migrated-to-api')).toBeTruthy();
+  });
+
+  it('runs only once — does not re-enqueue after the flag is set (avoids resurrecting cross-device deletes)', async () => {
+    localStorage.setItem('blueprints-migrated-to-api', '2026-07-22T00:00:00.000Z');
+    localStorage.setItem('blueprints-cache', JSON.stringify([['local-1', makeBlueprint('local-1')]]));
+    mocks.fetchAllBlueprints.mockResolvedValue({ data: [], error: null });
+
+    await loadAll();
+    const pending = localStorage.getItem('blueprints-pending');
+    expect(pending ? JSON.parse(pending) : []).toEqual([]);
+  });
+});
+
+describe('permanent-rejection handling (P2)', () => {
+  it('does not requeue a save the server permanently rejects', async () => {
+    mocks.upsertBlueprint.mockResolvedValue({ error: 'Blueprint id must be a UUID', permanent: true });
+    const status = await save('bad', makeBlueprint('bad'));
+    expect(status).toBe('error');
+    expect(localStorage.getItem('blueprints-pending')).toBeNull();
+  });
+
+  it('drops a permanently-rejected item from the pending queue during syncPending', async () => {
+    localStorage.setItem('blueprints-cache', JSON.stringify([['bad', makeBlueprint('bad')]]));
+    localStorage.setItem('blueprints-pending', JSON.stringify(['bad']));
+    mocks.upsertBlueprint.mockResolvedValue({ error: 'rejected', permanent: true });
+
+    const status = await syncPending();
+    expect(status).toBe('synced');
+    expect(JSON.parse(localStorage.getItem('blueprints-pending')!)).toEqual([]);
   });
 });

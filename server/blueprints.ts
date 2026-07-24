@@ -55,6 +55,8 @@ const VALID_NODE_TYPES = [
 
 const VALID_STATUSES = ['Draft', 'In Review', 'Approved', 'Archived'];
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 // ── Validation ───────────────────────────────────────────────────────
 
 export function validateBlueprint(body: unknown): { ok: true; blueprint: BlueprintDoc } | { ok: false; error: string } {
@@ -62,6 +64,9 @@ export function validateBlueprint(body: unknown): { ok: true; blueprint: Bluepri
   const b = body as Record<string, unknown>;
 
   if (typeof b.id !== 'string' || !b.id) return { ok: false, error: 'Blueprint must have a string id' };
+  // Reject non-UUID ids here as a 400 rather than letting them fail the Postgres
+  // UUID cast as an opaque 500 that the client would retry forever.
+  if (!UUID_RE.test(b.id)) return { ok: false, error: 'Blueprint id must be a UUID' };
   if (typeof b.title !== 'string') return { ok: false, error: 'Blueprint must have a title' };
   if (!Array.isArray(b.nodes)) return { ok: false, error: 'Blueprint nodes must be an array' };
   if (!Array.isArray(b.edges)) return { ok: false, error: 'Blueprint edges must be an array' };

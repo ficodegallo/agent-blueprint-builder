@@ -8,9 +8,15 @@ import { createHash, timingSafeEqual } from 'node:crypto';
  */
 export function isAuthorized(
   headerValue: string | string[] | undefined,
-  configuredToken: string | undefined = process.env.API_TOKEN
+  configuredToken: string | undefined = process.env.API_TOKEN,
+  isProduction: boolean = process.env.VERCEL_ENV === 'production'
 ): boolean {
-  if (!configuredToken) return true; // auth disabled
+  if (!configuredToken) {
+    // Fail closed on a real deployment: a production API with no API_TOKEN set
+    // would otherwise be an open, world-writable database. Only local/preview
+    // dev (no VERCEL_ENV=production) skips auth.
+    return !isProduction;
+  }
   const provided = Array.isArray(headerValue) ? headerValue[0] : headerValue;
   if (!provided) return false;
   const a = createHash('sha256').update(provided).digest();

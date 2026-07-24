@@ -29,6 +29,14 @@ export function getPool(): pg.Pool {
       ssl: sslConfigFor(databaseUrl),
       max: 3,
       idleTimeoutMillis: 10_000,
+      connectionTimeoutMillis: 5_000,
+      statement_timeout: 10_000,
+    });
+    // Railway resets idle connections; without this listener node-postgres would
+    // emit an unhandled 'error' and crash the warm serverless instance. The pool
+    // discards the broken client and mints a new one on next checkout.
+    pool.on('error', (err) => {
+      console.error('pg pool idle client error:', err.message);
     });
   }
   return pool;
