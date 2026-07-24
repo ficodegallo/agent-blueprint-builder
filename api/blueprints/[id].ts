@@ -1,14 +1,14 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getPool } from '../../server/db';
-import { applyCors } from '../../server/cors';
-import { isAuthorized } from '../../server/auth';
+import { getPool } from '../../server/db.js';
+import { applyCors } from '../../server/cors.js';
+import { isAuthorized } from '../../server/auth.js';
 import {
   deleteBlueprint,
   getBlueprint,
   upsertBlueprint,
   validateBlueprint,
   MAX_BODY_BYTES,
-} from '../../server/blueprints';
+} from '../../server/blueprints.js';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (applyCors(req, res)) return;
