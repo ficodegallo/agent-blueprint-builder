@@ -23,6 +23,7 @@ import type { Blueprint, SerializedNode } from '../types';
 import type { BlueprintEdge } from '../types/edges';
 import { migrateIntegrations } from '../types/nodes';
 import type { IntegrationDetail, ApiEndpoint } from '../types/nodes';
+import { getPattern } from '../features/patterns/patterns';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -436,6 +437,20 @@ function buildExecutiveSummary(
   if (blueprint.description) {
     elements.push(bodyText(blueprint.description));
   }
+
+  // Orchestration pattern (the overall shape the workflow follows)
+  const pattern = getPattern(blueprint.orchestrationPattern);
+  elements.push(
+    new Paragraph({
+      spacing: { before: 120, after: 120 },
+      children: [
+        new TextRun({ text: 'Orchestration Pattern: ', bold: true }),
+        new TextRun({
+          text: pattern ? `${pattern.name} — ${pattern.tagline}` : 'Freeform (no set pattern)',
+        }),
+      ],
+    })
+  );
 
   // Auto-generated summary
   const triggers = orderedNodes.filter((n) => n.data.nodeType === 'trigger').length;

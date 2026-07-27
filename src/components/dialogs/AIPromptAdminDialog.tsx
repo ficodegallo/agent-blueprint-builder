@@ -8,6 +8,7 @@ import {
   Search,
   RotateCcw,
   MessageCircleQuestion,
+  Workflow,
 } from 'lucide-react';
 import {
   getFeatureConfigs,
@@ -32,6 +33,7 @@ const FEATURE_ICONS: Record<AIFeatureKey, typeof FileUp> = {
   apiDiscovery: Search,
   bestPracticesAnalysis: BookOpen,
   interviewer: MessageCircleQuestion,
+  patternRecommend: Workflow,
 };
 
 export function AIPromptAdminDialog({ isOpen, onClose }: AIPromptAdminDialogProps) {

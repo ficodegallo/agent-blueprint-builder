@@ -115,6 +115,22 @@ describe('row mapping', () => {
     expect(summary).not.toHaveProperty('edges');
   });
 
+  it('round-trips a set orchestration pattern', () => {
+    const bp = makeBlueprint({ orchestrationPattern: 'routing' });
+    const row = blueprintToRow(bp);
+    expect(row.orchestration_pattern).toBe('routing');
+    const dbRow: Record<string, unknown> = { ...row, nodes: [], edges: [] };
+    expect(rowToBlueprint(dbRow).orchestrationPattern).toBe('routing');
+  });
+
+  it('maps a null pattern column back to undefined (freeform)', () => {
+    const bp = makeBlueprint();
+    const row = blueprintToRow(bp);
+    expect(row.orchestration_pattern).toBeNull();
+    const dbRow: Record<string, unknown> = { ...row, orchestration_pattern: null, nodes: [], edges: [] };
+    expect(rowToBlueprint(dbRow).orchestrationPattern).toBeUndefined();
+  });
+
   it('converts Date values from pg to ISO strings', () => {
     const bp = makeBlueprint();
     const row = blueprintToRow(bp);

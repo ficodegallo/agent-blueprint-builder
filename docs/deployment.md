@@ -40,7 +40,7 @@ From this repo:
 DATABASE_URL="postgresql://...from-railway..." npm run db:migrate
 ```
 
-Expected output: `Applying 001_init.sql...` then `Applied 1 migration(s).` Re-running prints `Up to date` — the runner is idempotent.
+Expected output: `Applying 001_init.sql...`, `Applying 002_orchestration_pattern.sql...`, then `Applied N migration(s).` Re-running prints `Up to date` — the runner is idempotent. Migration `002` adds the nullable `orchestration_pattern` column; existing rows are treated as "freeform".
 
 ## 3. Deploy to Vercel
 
