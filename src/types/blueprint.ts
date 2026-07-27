@@ -22,6 +22,9 @@ export interface BlueprintMetadata {
   version: string;
   status: Status;
   changeLog: ChangeLogEntry[];
+  // Orchestration pattern the blueprint follows (chosen/recommended at creation).
+  // Optional so existing blueprints load unchanged; unset renders as "Freeform".
+  orchestrationPattern?: import('../features/patterns/types').OrchestrationPatternId;
 }
 
 // SerializedNode is the JSON format for nodes (without React Flow internal state)
