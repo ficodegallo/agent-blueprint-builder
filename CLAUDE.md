@@ -68,6 +68,21 @@ src/
 - `src/utils/export.ts` - JSON, Excel, and PDF export with Integration Details sheet
 - `src/utils/canvasExport.ts` - Canvas diagram capture for PDF export
 
+## Orchestration Patterns (pattern-driven creation)
+
+A blueprint carries an optional `orchestrationPattern` (`src/features/patterns/`) — the overall shape it follows. It is chosen or recommended **at creation time**, then used to scaffold the starting graph, and all three creation paths agree on one shared catalog:
+
+- **Catalog** (`patterns.ts`): six patterns grounded in Anthropic's "Building Effective Agents" — `pipeline` (Sequential Pipeline), `routing`, `parallel` (Parallelization), `orchestrator` (Orchestrator-Workers), `evaluator` (Evaluator-Optimizer), `agent` (Autonomous Agent / skills-based). Ordered simplest → most-agentic.
+- **Scaffolds** (`scaffolds.ts`): `scaffoldPattern(id)` returns a minimal, editable starter graph (always trigger → … → end) using the node factories.
+- **Recommenders**: a deterministic decision-tree (`recommendPattern.ts`) for the manual guided picker (no API call), and AI recommenders for the doc/interview paths.
+
+Three creation paths, all off the shared catalog:
+1. **Manual** — "New Blueprint" opens `PatternPickerDialog` (`src/components/pattern/`) *before* the canvas: six pattern cards + a "Help me choose" questionnaire + "Start blank". The pick seeds the scaffold via `createBlueprintForPattern`.
+2. **Upload (Smart Import)** — after extraction, "Recommend from document" calls the `patternRecommend` AI feature; the chosen (overridable) pattern shapes generation via `buildPatternDirective`, and is stamped on the result.
+3. **Interview** — the Interviewer emits `recommendedPattern` in its turn JSON; a pattern chip in the panel lets the owner accept/change it, writing `orchestrationPattern` to the metadata store.
+
+The pattern shows as a badge in `BlueprintHeader` (and an editable select — changing it is **non-destructive**, never altering existing nodes). Pattern/graph mismatches surface as advisory warning **W011**. The field persists (localStorage + API column `orchestration_pattern`) and appears in the Word BRD.
+
 ## Node Types
 
 | Type | Color | Hex | Description |
@@ -367,6 +382,7 @@ All AI features read model IDs from `src/constants/aiModels.ts` (`AI_FEATURE_MOD
 - W008: Evaluator loop with no criteria
 - W009: Parallel split with no join anywhere
 - W010: Orchestrator with no workers
+- W011: Blueprint's orchestration pattern expects a signature node type the canvas lacks (advisory; pipeline/freeform never trigger it)
 
 **AI Best Practices check:** a built-in agent-design rulebook (`src/data/defaultBestPractices.ts`) always applies — verifiable success criteria, bounded loops, human gates on irreversible actions, simplest-pattern-first, one-agent-one-concern, failure paths on external calls — with user-defined practices appended when configured.
 

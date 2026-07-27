@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Edit2, Check, X, Plus, Trash2 } from 'lucide-react';
+import { ChevronDown, ChevronRight, Edit2, Check, X, Plus, Trash2, Workflow } from 'lucide-react';
 import { useBlueprintStore, useUIStore } from '../../store';
 import { STATUS_OPTIONS } from '../../data/statusOptions';
+import { ALL_PATTERNS, getPattern } from '../../features/patterns/patterns';
+import type { OrchestrationPatternId } from '../../features/patterns/types';
 import type { Status } from '../../types';
 
 export function BlueprintHeader() {
@@ -21,8 +23,11 @@ export function BlueprintHeader() {
   const businessBenefits = useBlueprintStore((state) => state.businessBenefits);
   const clientContacts = useBlueprintStore((state) => state.clientContacts);
   const changeLog = useBlueprintStore((state) => state.changeLog);
+  const orchestrationPattern = useBlueprintStore((state) => state.orchestrationPattern);
   const updateMetadata = useBlueprintStore((state) => state.updateMetadata);
   const setStatus = useBlueprintStore((state) => state.setStatus);
+
+  const patternName = getPattern(orchestrationPattern)?.name ?? 'Freeform';
 
   const [editingTitle, setEditingTitle] = useState(false);
   const [tempTitle, setTempTitle] = useState(title);
@@ -70,6 +75,13 @@ export function BlueprintHeader() {
           <ChevronRight className="w-4 h-4 text-gray-500" />
         )}
         <span className="text-sm font-medium text-gray-600">Blueprint Metadata</span>
+        <span
+          className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium bg-purple-50 text-purple-700 border border-purple-200 rounded-full"
+          title="Orchestration pattern"
+        >
+          <Workflow className="w-3 h-3" />
+          {patternName}
+        </span>
         {!isExpanded && (
           <span className="text-xs text-gray-400 ml-2">
             v{version} | {status} | Last modified {formatDate(lastModifiedDate)}
@@ -197,6 +209,29 @@ export function BlueprintHeader() {
                   placeholder="1.0"
                 />
               </div>
+            </div>
+
+            {/* Orchestration Pattern (changing it never alters existing nodes) */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
+                Orchestration Pattern
+              </label>
+              <select
+                value={orchestrationPattern ?? ''}
+                onChange={(e) =>
+                  updateMetadata({
+                    orchestrationPattern: (e.target.value || undefined) as OrchestrationPatternId | undefined,
+                  })
+                }
+                className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-blue-500 bg-white"
+              >
+                <option value="">Freeform (no pattern)</option>
+                {ALL_PATTERNS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name}
+                  </option>
+                ))}
+              </select>
             </div>
 
             {/* Created By / Last Modified By */}

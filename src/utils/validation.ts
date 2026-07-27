@@ -1,5 +1,6 @@
 import type { AppNode } from '../store/nodesStore';
 import type { BlueprintEdge } from '../types';
+import type { OrchestrationPatternId } from '../features/patterns/types';
 
 export type ValidationSeverity = 'error' | 'warning';
 
@@ -42,12 +43,24 @@ const WARNING_CODES = {
   NO_EVALUATOR_CRITERIA: 'W008',
   SPLIT_WITHOUT_JOIN: 'W009',
   NO_ORCHESTRATOR_WORKERS: 'W010',
+  PATTERN_MISMATCH: 'W011',
 } as const;
+
+// The node type each non-trivial pattern expects on the canvas. Absence is an
+// advisory warning (the pattern is design intent, not an enforced contract).
+const PATTERN_EXPECTED_NODE: Partial<Record<OrchestrationPatternId, { nodeType: string; label: string }>> = {
+  routing: { nodeType: 'router', label: 'a Router node' },
+  orchestrator: { nodeType: 'orchestrator', label: 'an Orchestrator node' },
+  parallel: { nodeType: 'parallel', label: 'a Parallel split/join' },
+  evaluator: { nodeType: 'evaluatorOptimizer', label: 'an Evaluator loop' },
+  agent: { nodeType: 'agentLoop', label: 'an Agent Loop node' },
+};
 
 export function validateBlueprint(
   nodes: AppNode[],
   edges: BlueprintEdge[],
-  existingBlueprintIds?: Set<string>
+  existingBlueprintIds?: Set<string>,
+  orchestrationPattern?: OrchestrationPatternId
 ): ValidationResult {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
@@ -282,6 +295,18 @@ export function validateBlueprint(
       severity: 'warning',
       code: WARNING_CODES.SPLIT_WITHOUT_JOIN,
       message: 'Blueprint has a parallel split but no parallel join — branches never converge',
+    });
+  }
+
+  // Blueprint-level: the chosen pattern implies a signature node type. Advisory
+  // only — the graph can legitimately drift from the pattern's scaffold.
+  const expected = orchestrationPattern ? PATTERN_EXPECTED_NODE[orchestrationPattern] : undefined;
+  if (expected && !nodes.some((n) => n.data.nodeType === expected.nodeType)) {
+    warnings.push({
+      id: `${WARNING_CODES.PATTERN_MISMATCH}-global`,
+      severity: 'warning',
+      code: WARNING_CODES.PATTERN_MISMATCH,
+      message: `This blueprint's pattern expects ${expected.label}, but the canvas has none`,
     });
   }
 

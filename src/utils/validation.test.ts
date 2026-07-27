@@ -470,3 +470,58 @@ describe('agentic pattern validation', () => {
     expect(result.errors).toHaveLength(0);
   });
 });
+
+describe('W011: Pattern / graph mismatch', () => {
+  it('warns when the routing pattern is set but no router node exists', () => {
+    const nodes = [createTriggerNode('t1'), createWorkNode('w1'), createEndNode('e1')];
+    const edges = connectChain(['t1', 'w1', 'e1']);
+    const result = validateBlueprint(nodes, edges, undefined, 'routing');
+    const w011 = result.warnings.filter((w) => w.code === 'W011');
+    expect(w011).toHaveLength(1);
+  });
+
+  it('does not warn when the routing pattern has a router node', () => {
+    const router: AppNode = {
+      id: 'r1',
+      type: 'router',
+      position: { x: 100, y: 0 },
+      data: {
+        nodeType: 'router',
+        name: 'Route',
+        description: '',
+        classifierInstructions: '',
+        routes: [
+          { id: 'a', label: 'A', description: '' },
+          { id: 'b', label: 'B', description: '' },
+        ],
+        fallbackRoute: 'A',
+      },
+    };
+    const nodes = [createTriggerNode('t1'), router, createEndNode('e1')];
+    const edges = connectChain(['t1', 'r1', 'e1']);
+    const result = validateBlueprint(nodes, edges, undefined, 'routing');
+    expect(result.warnings.filter((w) => w.code === 'W011')).toHaveLength(0);
+  });
+
+  it('never warns for the pipeline pattern (uses only base node types)', () => {
+    const nodes = [createTriggerNode('t1'), createWorkNode('w1'), createEndNode('e1')];
+    const edges = connectChain(['t1', 'w1', 'e1']);
+    const result = validateBlueprint(nodes, edges, undefined, 'pipeline');
+    expect(result.warnings.filter((w) => w.code === 'W011')).toHaveLength(0);
+  });
+
+  it('never warns when the blueprint is freeform (no pattern)', () => {
+    const nodes = [createTriggerNode('t1'), createWorkNode('w1'), createEndNode('e1')];
+    const edges = connectChain(['t1', 'w1', 'e1']);
+    const result = validateBlueprint(nodes, edges);
+    expect(result.warnings.filter((w) => w.code === 'W011')).toHaveLength(0);
+  });
+
+  it('classifies the mismatch as a warning, not an error', () => {
+    const nodes = [createTriggerNode('t1'), createWorkNode('w1'), createEndNode('e1')];
+    const edges = connectChain(['t1', 'w1', 'e1']);
+    const result = validateBlueprint(nodes, edges, undefined, 'orchestrator');
+    expect(result.errors.filter((e) => e.code === 'W011')).toHaveLength(0);
+    expect(result.warnings.some((w) => w.code === 'W011')).toBe(true);
+  });
+});
