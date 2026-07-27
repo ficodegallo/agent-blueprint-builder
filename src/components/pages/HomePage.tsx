@@ -5,13 +5,16 @@ import { useBlueprintsLibraryStore, type BlueprintSummary } from '../../store/bl
 import { BlueprintCard } from './BlueprintCard';
 import { BestPracticesDialog } from '../dialogs/BestPracticesDialog';
 import { AIPromptAdminDialog } from '../dialogs/AIPromptAdminDialog';
-import { v4 as uuidv4 } from 'uuid';
+import { PatternPickerDialog } from '../pattern/PatternPickerDialog';
+import { createBlueprintForPattern } from '../../features/patterns/createBlueprint';
+import type { OrchestrationPatternId } from '../../features/patterns/types';
 
 export function HomePage() {
   const navigate = useNavigate();
   const [searchQuery, setSearchQuery] = useState('');
   const [showBestPractices, setShowBestPractices] = useState(false);
   const [showPromptAdmin, setShowPromptAdmin] = useState(false);
+  const [showPatternPicker, setShowPatternPicker] = useState(false);
   const getBlueprintSummaries = useBlueprintsLibraryStore((state) => state.getBlueprintSummaries);
   const addBlueprint = useBlueprintsLibraryStore((state) => state.addBlueprint);
   const loadFromServer = useBlueprintsLibraryStore((state) => state.loadFromServer);
@@ -36,28 +39,14 @@ export function HomePage() {
   }, [blueprints, searchQuery]);
 
   const handleCreateNew = () => {
-    const newId = uuidv4();
-    addBlueprint({
-      id: newId,
-      title: 'Untitled Blueprint',
-      description: '',
-      clientName: '',
-      projectName: '',
-      impactedAudiences: [],
-      businessBenefits: [],
-      clientContacts: [],
-      createdBy: '',
-      lastModifiedBy: '',
-      lastModifiedDate: new Date().toISOString(),
-      version: '1.0',
-      status: 'Draft',
-      changeLog: [],
-      nodes: [],
-      edges: [],
-      comments: [],
-      parkingLot: [],
-    });
-    navigate(`/blueprint/${newId}`);
+    setShowPatternPicker(true);
+  };
+
+  const handlePatternSelected = (patternId: OrchestrationPatternId | null) => {
+    setShowPatternPicker(false);
+    const blueprint = createBlueprintForPattern(patternId);
+    addBlueprint(blueprint);
+    navigate(`/blueprint/${blueprint.id}`);
   };
 
   const handleOpenBlueprint = (blueprint: BlueprintSummary) => {
@@ -218,6 +207,12 @@ export function HomePage() {
       <AIPromptAdminDialog
         isOpen={showPromptAdmin}
         onClose={() => setShowPromptAdmin(false)}
+      />
+
+      <PatternPickerDialog
+        isOpen={showPatternPicker}
+        onClose={() => setShowPatternPicker(false)}
+        onSelect={handlePatternSelected}
       />
     </div>
   );
