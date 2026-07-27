@@ -1,5 +1,7 @@
 import type { NodeType, AIConfidence } from '../../types/nodes';
 import type { Blueprint } from '../../types/blueprint';
+import type { OrchestrationPatternId } from '../patterns/types';
+import type { PatternRecommendation } from './recommendPattern';
 
 // User preference types
 export type OptimizationGoal = 'maximize_automation' | 'balanced' | 'human_in_loop';
@@ -33,6 +35,9 @@ export interface SmartImportOptions {
   additionalInstructions: string;
   optimizationGoal: OptimizationGoal;
   granularity: Granularity;
+  // Orchestration pattern to shape generation around. Unset = let the model
+  // choose the simplest fit (the prior behavior).
+  orchestrationPattern?: OrchestrationPatternId | null;
 }
 
 // State for the smart import feature
@@ -43,6 +48,9 @@ export interface SmartImportState {
   stepProgress: number;
   error: string | null;
   generatedBlueprint: Blueprint | null;
+  // Pattern recommendation from the uploaded document (null until requested).
+  patternRecommendation: PatternRecommendation | null;
+  isRecommendingPattern: boolean;
 }
 
 // Summary of generated blueprint
@@ -92,6 +100,7 @@ export const DEFAULT_OPTIONS: SmartImportOptions = {
   additionalInstructions: '',
   optimizationGoal: 'balanced',
   granularity: 'detailed',
+  orchestrationPattern: null,
 };
 
 export const INITIAL_STATE: SmartImportState = {
@@ -101,4 +110,6 @@ export const INITIAL_STATE: SmartImportState = {
   stepProgress: 0,
   error: null,
   generatedBlueprint: null,
+  patternRecommendation: null,
+  isRecommendingPattern: false,
 };

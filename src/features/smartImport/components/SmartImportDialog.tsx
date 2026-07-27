@@ -21,6 +21,7 @@ export function SmartImportDialog() {
     addFiles,
     removeFile,
     updateOptions,
+    recommendPattern,
     handleGenerate,
     loadGeneratedBlueprint,
     reset,
@@ -155,6 +156,10 @@ export function SmartImportDialog() {
               options={state.options}
               onChange={updateOptions}
               disabled={isGenerating}
+              patternRecommendation={state.patternRecommendation}
+              isRecommendingPattern={state.isRecommendingPattern}
+              canRecommendPattern={canGenerate}
+              onRecommendPattern={recommendPattern}
             />
           </>
         )}

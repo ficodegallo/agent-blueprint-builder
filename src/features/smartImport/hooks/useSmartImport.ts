@@ -10,6 +10,7 @@ import {
 import { parseClaudeResponse } from '../utils/responseParser';
 import { applyAutoLayout } from '../utils/autoLayout';
 import { useClaudeApi } from './useClaudeApi';
+import { recommendPatternFromContent } from '../recommendPattern';
 import type {
   SmartImportState,
   SmartImportOptions,
@@ -103,6 +104,33 @@ export function useSmartImport() {
       options: { ...s.options, ...updates },
     }));
   }, []);
+
+  // Recommend an orchestration pattern from the uploaded documents. Non-blocking:
+  // failure leaves the recommendation unset and the user can still pick/generate.
+  const recommendPattern = useCallback(async () => {
+    const successfulFiles = state.files.filter((f) => f.status === 'success' && f.extractedText);
+    if (successfulFiles.length === 0) return;
+
+    setState((s) => ({ ...s, isRecommendingPattern: true, error: null }));
+
+    const combinedContent = combineExtractedContent(
+      successfulFiles.map((f) => ({ name: f.name, text: f.extractedText! }))
+    );
+
+    const result = await recommendPatternFromContent(combinedContent);
+
+    setState((s) => ({
+      ...s,
+      isRecommendingPattern: false,
+      patternRecommendation: result.success && result.recommendation ? result.recommendation : null,
+      // Pre-fill the chosen pattern with the recommendation unless the user
+      // already picked one.
+      options:
+        result.success && result.recommendation && !s.options.orchestrationPattern
+          ? { ...s.options, orchestrationPattern: result.recommendation.patternId }
+          : s.options,
+    }));
+  }, [state.files]);
 
   // Main generation function
   const handleGenerate = useCallback(async () => {
@@ -218,6 +246,10 @@ export function useSmartImport() {
       const finalBlueprint = {
         ...parseResult.blueprint,
         nodes: layoutedNodes,
+        // Stamp the chosen pattern onto the blueprint (undefined stays freeform).
+        ...(state.options.orchestrationPattern
+          ? { orchestrationPattern: state.options.orchestrationPattern }
+          : {}),
       };
 
       // Step 5: Complete
@@ -291,6 +323,7 @@ export function useSmartImport() {
     addFiles,
     removeFile,
     updateOptions,
+    recommendPattern,
     handleGenerate,
     loadGeneratedBlueprint,
     reset,

@@ -1,10 +1,17 @@
-import { Bot, Users, Zap, Layers, List, MousePointer } from 'lucide-react';
+import { Bot, Users, Zap, Layers, List, MousePointer, Sparkles, Loader2 } from 'lucide-react';
 import type { SmartImportOptions, OptimizationGoal, Granularity } from '../types';
+import type { PatternRecommendation } from '../recommendPattern';
+import { ALL_PATTERNS } from '../../patterns/patterns';
+import type { OrchestrationPatternId } from '../../patterns/types';
 
 interface GenerationOptionsProps {
   options: SmartImportOptions;
   onChange: (options: Partial<SmartImportOptions>) => void;
   disabled?: boolean;
+  patternRecommendation?: PatternRecommendation | null;
+  isRecommendingPattern?: boolean;
+  canRecommendPattern?: boolean;
+  onRecommendPattern?: () => void;
 }
 
 const optimizationOptions: Array<{
@@ -63,9 +70,62 @@ export function GenerationOptions({
   options,
   onChange,
   disabled,
+  patternRecommendation,
+  isRecommendingPattern,
+  canRecommendPattern,
+  onRecommendPattern,
 }: GenerationOptionsProps) {
   return (
     <div className="space-y-6">
+      {/* Orchestration Pattern */}
+      <div>
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-sm font-medium text-gray-700">Orchestration Pattern</p>
+          {onRecommendPattern && (
+            <button
+              type="button"
+              onClick={onRecommendPattern}
+              disabled={disabled || isRecommendingPattern || !canRecommendPattern}
+              className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Analyze the uploaded document and recommend a pattern"
+            >
+              {isRecommendingPattern ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="w-3.5 h-3.5" />
+              )}
+              {isRecommendingPattern ? 'Analyzing…' : 'Recommend from document'}
+            </button>
+          )}
+        </div>
+        <select
+          value={options.orchestrationPattern ?? ''}
+          onChange={(e) =>
+            onChange({
+              orchestrationPattern: (e.target.value || null) as OrchestrationPatternId | null,
+            })
+          }
+          disabled={disabled}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-purple-500 focus:border-purple-500 disabled:opacity-50 disabled:bg-gray-50 bg-white"
+        >
+          <option value="">Let AI choose the simplest fit</option>
+          {ALL_PATTERNS.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.name} — {p.tagline}
+            </option>
+          ))}
+        </select>
+        {patternRecommendation && (
+          <div className="mt-2 flex items-start gap-2 p-2.5 bg-purple-50 border border-purple-100 rounded-lg">
+            <Sparkles className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-purple-800">
+              <span className="font-medium">Recommended ({patternRecommendation.confidence} confidence):</span>{' '}
+              {patternRecommendation.rationale}
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Process Name */}
       <div>
         <label htmlFor="processName" className="block text-sm font-medium text-gray-700 mb-1">

@@ -1,6 +1,8 @@
 import type { SmartImportOptions } from './types';
 import { getActivePrompts } from './utils/promptStorage';
 import { AI_FEATURE_MODELS, ANTHROPIC_API_URL } from '../../constants/aiModels';
+import { getPattern } from '../patterns/patterns';
+import type { OrchestrationPatternId } from '../patterns/types';
 
 // API Configuration
 export const SMART_IMPORT_CONFIG = {
@@ -56,6 +58,23 @@ const GRANULARITY_INSTRUCTIONS = {
   click_level: `Create a comprehensive workflow with 20-50+ nodes. Include every action, verification step, and edge case handling.`,
 } as const;
 
+// How to shape the generated graph when a specific pattern is chosen. Keyed by
+// OrchestrationPatternId; injected into the prompt only when a pattern is set.
+const PATTERN_INSTRUCTIONS: Record<OrchestrationPatternId, string> = {
+  pipeline:
+    'Shape this as a SEQUENTIAL PIPELINE: a linear chain of "work" nodes in a fixed order, with "decision" gates only where a rule-based branch is genuinely needed. Do not introduce orchestrator, router, or agentLoop nodes.',
+  routing:
+    'Shape this around a ROUTING pattern: a "router" node classifies the input and dispatches to specialized downstream "work" paths, one per category. Give the router a route per distinct category.',
+  parallel:
+    'Shape this around PARALLELIZATION: a "parallel" split fans the work into independent branches that run concurrently, and a matching "parallel" join recombines them. Put the independent subtasks on separate branches.',
+  orchestrator:
+    'Shape this around ORCHESTRATOR-WORKERS: a single "orchestrator" node with a worker pool that decomposes the task at runtime and delegates to workers. Give it a termination condition and named workers.',
+  evaluator:
+    'Shape this around an EVALUATOR-OPTIMIZER loop: an "evaluatorOptimizer" node whose generator produces output and evaluator scores it against explicit criteria, iterating until it passes.',
+  agent:
+    'Shape this around a single AUTONOMOUS AGENT: an "agentLoop" node with the skills/tools needed for the process and a clear stop condition. Use this only because the steps genuinely cannot be laid out in advance.',
+};
+
 /**
  * Get the active system prompt (custom or default)
  */
@@ -80,7 +99,7 @@ export function buildUserPrompt(
     : '';
 
   // Replace placeholders in template
-  return template
+  const base = template
     .replace('{{EXTRACTED_CONTENT}}', extractedContent)
     .replace('{{PROCESS_NAME}}', options.processName || 'Generated Process')
     .replace('{{OPTIMIZATION_GOAL}}', options.optimizationGoal)
@@ -88,6 +107,18 @@ export function buildUserPrompt(
     .replace('{{GRANULARITY}}', options.granularity)
     .replace('{{GRANULARITY_INSTRUCTIONS}}', granularityInstructions)
     .replace('{{ADDITIONAL_INSTRUCTIONS}}', additionalInstructions);
+
+  // When a pattern is chosen, append a directive so the graph is shaped to it.
+  // Appended (not a template placeholder) so custom prompts keep working.
+  return base + buildPatternDirective(options.orchestrationPattern);
+}
+
+/** Directive block appended to the generation prompt for a chosen pattern. */
+export function buildPatternDirective(patternId: OrchestrationPatternId | null | undefined): string {
+  if (!patternId) return '';
+  const pattern = getPattern(patternId);
+  if (!pattern) return '';
+  return `\n\n## Required orchestration pattern: ${pattern.name}\n${PATTERN_INSTRUCTIONS[pattern.id]}`;
 }
 
 // Keep old implementation as fallback

@@ -11,7 +11,8 @@ export type AIFeatureKey =
   | 'goalEvaluate'
   | 'taskAutoOrder'
   | 'apiDiscovery'
-  | 'interviewer';
+  | 'interviewer'
+  | 'patternRecommend';
 
 export interface AIFeaturePrompts {
   systemPrompt: string;
@@ -101,6 +102,15 @@ export function getFeatureConfigs(): AIFeatureConfig[] {
         { token: '{{MODE_INSTRUCTIONS}}', description: 'Mode-specific instructions (Discovery or Grill)' },
         { token: '{{PROCESS_CONTEXT}}', description: 'What the user said they want to work on' },
         { token: '{{BLUEPRINT_STATE}}', description: 'Compact serialization of the current canvas' },
+      ],
+    },
+    {
+      key: 'patternRecommend',
+      label: 'Pattern Recommend',
+      description: 'Recommends the best orchestration pattern for an uploaded process document.',
+      placeholders: [
+        { token: '{{EXTRACTED_CONTENT}}', description: 'Extracted text from the uploaded document' },
+        { token: '{{PATTERN_CATALOG}}', description: 'One-line summary of each available orchestration pattern' },
       ],
     },
   ];
@@ -503,6 +513,26 @@ Set "done": true only when every coverage area is covered (or the person says th
 {{BLUEPRINT_STATE}}
 
 Begin the interview. Remember: respond only with the JSON object.`,
+  },
+
+  patternRecommend: {
+    systemPrompt: `You are an expert agentic-workflow architect. Given a process description, you recommend the single best ORCHESTRATION PATTERN to build it as an agentic workflow.
+
+Follow the house rule: prefer the SIMPLEST pattern that satisfies the process. Escalate to a more agentic pattern only when a named failure mode of the simpler one actually appears (steps that cannot be fixed in advance, a need for specialist isolation, a scale/parallelism ceiling, or output that must iterate against clear criteria).
+
+Return ONLY a JSON object with this exact structure, no other text:
+{
+  "patternId": "pipeline | routing | parallel | orchestrator | evaluator | agent",
+  "rationale": "1-2 sentences explaining why this pattern fits the process",
+  "confidence": "high | medium | low"
+}`,
+    userPromptTemplate: `## Available orchestration patterns
+{{PATTERN_CATALOG}}
+
+## Process documentation
+{{EXTRACTED_CONTENT}}
+
+Recommend the single best pattern for building this process as an agentic workflow. Return ONLY the JSON object.`,
   },
 
   bestPracticesAnalysis: {
