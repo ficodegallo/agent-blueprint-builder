@@ -85,6 +85,7 @@ function BlueprintEditorContent() {
       version: blueprint.version,
       status: blueprint.status,
       changeLog: blueprint.changeLog,
+      orchestrationPattern: blueprint.orchestrationPattern,
     });
 
     // Load nodes with proper typing
@@ -140,6 +141,7 @@ function BlueprintEditorContent() {
       version: blueprintState.version,
       status: blueprintState.status,
       changeLog: blueprintState.changeLog,
+      orchestrationPattern: blueprintState.orchestrationPattern,
       nodes: serializedNodes,
       edges: currentEdges,
       comments: currentComments,

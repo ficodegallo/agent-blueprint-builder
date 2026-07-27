@@ -473,6 +473,9 @@ Return ONLY the JSON array of suggested endpoints.`,
 ## Choosing patterns for what you hear
 Prefer the simplest structure: fixed steps → work nodes (agent/automation/human); rule-based branching → decision; judgment-based classification → router; simultaneous independent steps → parallel split+join; iterate-until-quality → evaluatorOptimizer; dynamic decomposition across specialists → orchestrator; open-ended tasks → agentLoop. Any irreversible outward-facing action needs hitl.mode "approval".
 
+## Recommending an overall orchestration pattern
+As the shape of the process becomes clear, recommend ONE overall orchestration pattern for the whole workflow via the "recommendedPattern" field. Prefer the SIMPLEST that fits; escalate only when a named failure mode of the simpler pattern appears. Pattern ids: "pipeline" (fixed ordered steps), "routing" (classify then dispatch), "parallel" (independent concurrent branches), "orchestrator" (manager decomposes and delegates at runtime), "evaluator" (generate + critique loop), "agent" (one autonomous agent with skills). Omit the field until you have enough signal; update it as you learn more.
+
 ## Coverage areas
 Track these until each is covered: trigger (what starts it), steps (the work itself), systems (tools/integrations touched), decisions (branch points and rules), exceptions (what goes wrong and who handles it), volumes (how often, how many, SLAs), oversight (where humans review/approve).
 
@@ -488,6 +491,7 @@ Respond ONLY with a JSON object, no other text:
     {"op": "removeEdge", "source": "id", "target": "id"}
   ],
   "coverage": {"trigger": "missing|partial|covered", "steps": "...", "systems": "...", "decisions": "...", "exceptions": "...", "volumes": "...", "oversight": "..."},
+  "recommendedPattern": {"id": "pipeline|routing|parallel|orchestrator|evaluator|agent", "rationale": "why this pattern fits", "confidence": "high|medium|low"},
   "done": false
 }
 

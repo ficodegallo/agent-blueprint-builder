@@ -1,6 +1,14 @@
 import type { NodeData } from '../../types';
+import type { OrchestrationPatternId } from '../patterns/types';
 
 export type InterviewMode = 'discovery' | 'grill';
+
+// A pattern the interviewer infers from what it has heard so far.
+export interface InterviewerPatternRecommendation {
+  id: OrchestrationPatternId;
+  rationale: string;
+  confidence: 'high' | 'medium' | 'low';
+}
 
 export type CoverageStatus = 'missing' | 'partial' | 'covered';
 
@@ -50,6 +58,8 @@ export interface InterviewerTurn {
   actions: CanvasAction[];
   coverage: Coverage;
   done: boolean;
+  // Optional pattern the model recommends based on what it has heard.
+  recommendedPattern?: InterviewerPatternRecommendation;
 }
 
 export interface ChatMessage {

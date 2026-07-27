@@ -4,15 +4,17 @@ import { getApiKey } from '../smartImport/hooks/useClaudeApi';
 import { getActivePrompts } from '../../utils/aiPromptStorage';
 import { AI_FEATURE_MODELS, ANTHROPIC_API_URL, ANTHROPIC_VERSION } from '../../constants/aiModels';
 import { applyAutoLayout } from '../smartImport/utils/autoLayout';
-import { useNodesStore, useEdgesStore } from '../../store';
+import { useNodesStore, useEdgesStore, useBlueprintStore } from '../../store';
 import type { AppNode } from '../../store/nodesStore';
 import type { BlueprintEdge, NodeData } from '../../types';
 import type { SerializedNode } from '../../types/blueprint';
+import { isOrchestrationPatternId } from '../patterns/patterns';
 import {
   emptyCoverage,
   type CanvasAction,
   type ChatMessage,
   type Coverage,
+  type InterviewerPatternRecommendation,
   type InterviewerTurn,
   type InterviewMode,
 } from './types';
@@ -67,6 +69,23 @@ function extractTurn(text: string): InterviewerTurn {
     actions: Array.isArray(parsed.actions) ? (parsed.actions as CanvasAction[]) : [],
     coverage: { ...emptyCoverage(), ...(parsed.coverage || {}) },
     done: parsed.done === true,
+    recommendedPattern: parsePattern(parsed.recommendedPattern),
+  };
+}
+
+// Validate an inferred pattern; drop anything with an out-of-catalog id.
+function parsePattern(value: unknown): InterviewerPatternRecommendation | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const p = value as Record<string, unknown>;
+  if (!isOrchestrationPatternId(p.id)) return undefined;
+  const confidence =
+    p.confidence === 'high' || p.confidence === 'medium' || p.confidence === 'low'
+      ? p.confidence
+      : 'medium';
+  return {
+    id: p.id,
+    rationale: typeof p.rationale === 'string' ? p.rationale : '',
+    confidence,
   };
 }
 
@@ -77,6 +96,8 @@ export function useInterviewer() {
   const [isThinking, setIsThinking] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recommendedPattern, setRecommendedPattern] =
+    useState<InterviewerPatternRecommendation | null>(null);
 
   // Apply canvas actions from a turn; returns how many succeeded
   const applyActions = useCallback((actions: CanvasAction[]): number => {
@@ -201,6 +222,7 @@ export function useInterviewer() {
         const applied = applyActions(turn.actions);
         setCoverage(turn.coverage);
         setIsDone(turn.done);
+        if (turn.recommendedPattern) setRecommendedPattern(turn.recommendedPattern);
         setMessages([
           ...history,
           {
@@ -260,12 +282,20 @@ export function useInterviewer() {
     await runTurn(messages);
   }, [messages, runTurn]);
 
+  // Apply the recommended (or a chosen) pattern to the blueprint metadata.
+  const acceptPattern = useCallback((patternId?: string) => {
+    const id = patternId ?? recommendedPattern?.id;
+    if (!id || !isOrchestrationPatternId(id)) return;
+    useBlueprintStore.getState().updateMetadata({ orchestrationPattern: id });
+  }, [recommendedPattern]);
+
   const reset = useCallback(() => {
     setMode(null);
     setMessages([]);
     setCoverage(emptyCoverage());
     setIsDone(false);
     setError(null);
+    setRecommendedPattern(null);
   }, []);
 
   return {
@@ -275,6 +305,8 @@ export function useInterviewer() {
     isThinking,
     isDone,
     error,
+    recommendedPattern,
+    acceptPattern,
     start,
     sendAnswer,
     retry,
