@@ -9,6 +9,7 @@ import type { AppNode } from '../../store/nodesStore';
 import type { BlueprintEdge, NodeData } from '../../types';
 import type { SerializedNode } from '../../types/blueprint';
 import { isOrchestrationPatternId } from '../patterns/patterns';
+import { mergeParkedQuestions, pruneCoveredParked } from './parkedQuestions';
 import {
   emptyCoverage,
   parkedQuestionKey,
@@ -125,6 +126,7 @@ export function useInterviewer() {
   const [error, setError] = useState<string | null>(null);
   const [recommendedPattern, setRecommendedPattern] =
     useState<InterviewerPatternRecommendation | null>(null);
+  const [parkedQuestions, setParkedQuestions] = useState<ParkedQuestion[]>([]);
 
   // Apply canvas actions from a turn; returns how many succeeded
   const applyActions = useCallback((actions: CanvasAction[]): number => {
@@ -250,6 +252,11 @@ export function useInterviewer() {
         setCoverage(turn.coverage);
         setIsDone(turn.done);
         if (turn.recommendedPattern) setRecommendedPattern(turn.recommendedPattern);
+        // Accumulate newly-parked questions (deduped), then drop any whose area
+        // is now covered — the owner answered it, so it is no longer a gap.
+        setParkedQuestions((prev) =>
+          pruneCoveredParked(mergeParkedQuestions(prev, turn.parkedQuestions), turn.coverage)
+        );
         setMessages([
           ...history,
           {
@@ -273,6 +280,7 @@ export function useInterviewer() {
       setMode(selectedMode);
       setIsDone(false);
       setCoverage(emptyCoverage());
+      setParkedQuestions([]);
 
       const prompts = getActivePrompts('interviewer');
       const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
@@ -304,6 +312,25 @@ export function useInterviewer() {
     [messages, runTurn]
   );
 
+  // Explicitly defer the current question. Sends a canonical deferral (any
+  // partial text the owner typed + a [[DEFER]] marker) so the model reliably
+  // parks the current question even when the owner types nothing.
+  const deferQuestion = useCallback(
+    async (partialText?: string) => {
+      const trimmed = partialText?.trim();
+      const answer = trimmed
+        ? `${trimmed}\n\n[[DEFER]]`
+        : "[[DEFER]] I don't have this answer yet — park it for later.";
+      const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
+      const apiText = `${answer}\n\n## Current canvas state\n${canvasState}`;
+      const displayText = trimmed ? `${trimmed} (deferred)` : "I don't know — I'll get this later.";
+      const history: ChatMessage[] = [...messages, { role: 'user', displayText, apiText }];
+      setMessages(history);
+      await runTurn(history);
+    },
+    [messages, runTurn]
+  );
+
   const retry = useCallback(async () => {
     if (messages.length === 0) return;
     await runTurn(messages);
@@ -323,6 +350,7 @@ export function useInterviewer() {
     setIsDone(false);
     setError(null);
     setRecommendedPattern(null);
+    setParkedQuestions([]);
   }, []);
 
   return {
@@ -333,9 +361,11 @@ export function useInterviewer() {
     isDone,
     error,
     recommendedPattern,
+    parkedQuestions,
     acceptPattern,
     start,
     sendAnswer,
+    deferQuestion,
     retry,
     reset,
   };
