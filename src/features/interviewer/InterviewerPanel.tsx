@@ -54,7 +54,7 @@ export function InterviewerPanel() {
 
   const [processContext, setProcessContext] = useState('');
   const [answer, setAnswer] = useState('');
-  const [savedSession, setSavedSession] = useState<InterviewSession | null>(null);
+  const [sessionNonce, setSessionNonce] = useState(0);
   const [showParked, setShowParked] = useState(false);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
@@ -62,11 +62,13 @@ export function InterviewerPanel() {
     transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isThinking]);
 
-  // When the panel opens on the start screen, surface any persisted session
-  // so the owner can resume instead of starting over.
-  useEffect(() => {
-    if (isOpen && mode === null) setSavedSession(getSavedSession());
-  }, [isOpen, mode, getSavedSession]);
+  // Surface any persisted session on the start screen so the owner can resume
+  // instead of starting over. Derived (not effect-driven) to avoid cascading
+  // renders; the nonce lets "Start over" force a re-read after clearing.
+  const savedSession: InterviewSession | null = useMemo(() => {
+    void sessionNonce; // re-read after "Start over" clears the persisted session
+    return isOpen && mode === null ? getSavedSession() : null;
+  }, [isOpen, mode, getSavedSession, sessionNonce]);
 
   // Group parked questions by coverage area for the collapsible list.
   const parkedByArea = useMemo(() => {
@@ -159,7 +161,7 @@ export function InterviewerPanel() {
                 <button
                   onClick={() => {
                     reset();
-                    setSavedSession(null);
+                    setSessionNonce((n) => n + 1);
                   }}
                   className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
                 >
