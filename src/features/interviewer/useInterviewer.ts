@@ -11,12 +11,16 @@ import type { SerializedNode } from '../../types/blueprint';
 import { isOrchestrationPatternId } from '../patterns/patterns';
 import {
   emptyCoverage,
+  parkedQuestionKey,
+  COVERAGE_LABELS,
   type CanvasAction,
   type ChatMessage,
   type Coverage,
+  type CoverageArea,
   type InterviewerPatternRecommendation,
   type InterviewerTurn,
   type InterviewMode,
+  type ParkedQuestion,
 } from './types';
 
 const MODEL = AI_FEATURE_MODELS.interviewer;
@@ -70,7 +74,30 @@ function extractTurn(text: string): InterviewerTurn {
     coverage: { ...emptyCoverage(), ...(parsed.coverage || {}) },
     done: parsed.done === true,
     recommendedPattern: parsePattern(parsed.recommendedPattern),
+    parkedQuestions: parseParkedQuestions(parsed.parkedQuestions),
   };
+}
+
+// A parked question is valid only with a non-empty question and a known
+// coverage area; anything else is dropped (mirrors parsePattern's discipline).
+function parseParkedQuestions(value: unknown): ParkedQuestion[] {
+  if (!Array.isArray(value)) return [];
+  const out: ParkedQuestion[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const p = entry as Record<string, unknown>;
+    const question = typeof p.question === 'string' ? p.question.trim() : '';
+    const area = p.area as CoverageArea;
+    if (!question || !(area in COVERAGE_LABELS)) continue;
+    out.push({
+      id: parkedQuestionKey(area, question),
+      question,
+      area,
+      why: typeof p.why === 'string' ? p.why : '',
+      context: typeof p.context === 'string' && p.context.trim() ? p.context.trim() : undefined,
+    });
+  }
+  return out;
 }
 
 // Validate an inferred pattern; drop anything with an out-of-catalog id.

@@ -45,6 +45,24 @@ export function emptyCoverage(): Coverage {
   };
 }
 
+// A question the owner couldn't answer in the moment, parked for later.
+export interface ParkedQuestion {
+  // Stable client key: `${area}:${normalizedText}` (see parkedQuestionKey)
+  id: string;
+  question: string;
+  area: CoverageArea;
+  // Why this answer matters to the blueprint (model-authored)
+  why: string;
+  // Partial info the owner already gave, if any
+  context?: string;
+}
+
+// Build a stable dedupe key for a parked question from its area + text.
+export function parkedQuestionKey(area: CoverageArea, question: string): string {
+  const normalized = question.trim().toLowerCase().replace(/\s+/g, ' ');
+  return `${area}:${normalized}`;
+}
+
 // Canvas mutations the interviewer can apply
 export type CanvasAction =
   | { op: 'addNode'; id: string; data: NodeData }
@@ -60,6 +78,8 @@ export interface InterviewerTurn {
   done: boolean;
   // Optional pattern the model recommends based on what it has heard.
   recommendedPattern?: InterviewerPatternRecommendation;
+  // Questions the owner deferred this turn (empty when nothing was parked).
+  parkedQuestions: ParkedQuestion[];
 }
 
 export interface ChatMessage {
@@ -69,4 +89,14 @@ export interface ChatMessage {
   // What is sent back to the API (for assistant: the raw JSON response)
   apiText: string;
   actionCount?: number;
+}
+
+// A persisted interview session, keyed per-blueprint so "come back later" works.
+export interface InterviewSession {
+  mode: InterviewMode;
+  processContext: string;
+  messages: ChatMessage[];
+  coverage: Coverage;
+  parkedQuestions: ParkedQuestion[];
+  updatedAt: string;
 }
