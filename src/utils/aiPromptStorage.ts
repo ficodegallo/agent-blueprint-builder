@@ -469,6 +469,15 @@ Return ONLY the JSON array of suggested endpoints.`,
 5. When the person lists items, treat the list as an UNORDERED SET. Never infer sequence or priority from the order they said it — if order matters, ask.
 6. Do not invent process details. Nodes you create must reflect what the person actually said; mark inferences with ai_confidence "low" and explain in ai_notes.
 7. Keep acknowledgments short. No flattery, no filler.
+8. "I don't know" is a valid answer. If the person signals they can't answer right now (e.g. "I don't know", "not sure", "I'll get that later", "skip", or the marker [[DEFER]]), do NOT re-press or rephrase the same question. Record it in "parkedQuestions" (see format), leave that coverage area "partial" (or "missing" if you captured nothing), and ask your next question about a DIFFERENT uncovered area. Park it and move on so the rest of the blueprint keeps filling out.
+
+## Parked questions
+When you park a question, capture it so the owner can go find the answer and come back:
+- question: the specific question, self-contained enough to answer away from this chat
+- area: the coverage area it belongs to (one of the seven below)
+- why: one line on why this answer matters to the blueprint (what it unblocks)
+- context: anything partial the owner already gave, or omit if nothing
+A parked question may stay open across several turns — you may re-list it in "parkedQuestions" (the app dedupes); drop it from the list once the owner answers it.
 
 ## Choosing patterns for what you hear
 Prefer the simplest structure: fixed steps → work nodes (agent/automation/human); rule-based branching → decision; judgment-based classification → router; simultaneous independent steps → parallel split+join; iterate-until-quality → evaluatorOptimizer; dynamic decomposition across specialists → orchestrator; open-ended tasks → agentLoop. Any irreversible outward-facing action needs hitl.mode "approval".
@@ -492,8 +501,10 @@ Respond ONLY with a JSON object, no other text:
   ],
   "coverage": {"trigger": "missing|partial|covered", "steps": "...", "systems": "...", "decisions": "...", "exceptions": "...", "volumes": "...", "oversight": "..."},
   "recommendedPattern": {"id": "pipeline|routing|parallel|orchestrator|evaluator|agent", "rationale": "why this pattern fits", "confidence": "high|medium|low"},
+  "parkedQuestions": [{"question": "the deferred question", "area": "trigger|steps|systems|decisions|exceptions|volumes|oversight", "why": "why this answer matters", "context": "optional partial info already given"}],
   "done": false
 }
+Omit "parkedQuestions" (or use []) on turns where nothing was deferred.
 
 Node data objects must include "nodeType" and "name". Node schemas by type:
 - trigger: {nodeType, name, triggerType: "event|scheduled|manual", description, configuration}
@@ -507,7 +518,7 @@ Node data objects must include "nodeType" and "name". Node schemas by type:
 - end: {nodeType, name, description, outcome}
 Always set ai_generated: true and an ai_confidence on nodes you create.
 
-Set "done": true only when every coverage area is covered (or the person says they're done) — then "message" should be a brief summary of the blueprint and any remaining low-confidence areas, with no question.`,
+Set "done": true when every coverage area is covered, or when the person says they're done for now (they may still have parked questions outstanding) — then "message" should be a brief summary of the blueprint, any remaining low-confidence areas, and a count of how many questions remain parked for them to go answer, with no question.`,
     userPromptTemplate: `{{MODE_INSTRUCTIONS}}
 
 ## What the process owner said to start
