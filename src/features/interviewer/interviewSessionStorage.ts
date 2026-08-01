@@ -1,4 +1,4 @@
-import type { InterviewSession } from './types';
+import { emptyCoverage, type InterviewSession } from './types';
 
 const STORAGE_PREFIX = 'blueprint-builder:interview-session:';
 
@@ -23,7 +23,7 @@ export function loadSession(blueprintId: string): InterviewSession | null {
       mode: parsed.mode,
       processContext: typeof parsed.processContext === 'string' ? parsed.processContext : '',
       messages: Array.isArray(parsed.messages) ? parsed.messages : [],
-      coverage: (parsed.coverage ?? {}) as InterviewSession['coverage'],
+      coverage: { ...emptyCoverage(), ...(parsed.coverage ?? {}) },
       parkedQuestions: Array.isArray(parsed.parkedQuestions) ? parsed.parkedQuestions : [],
       updatedAt: typeof parsed.updatedAt === 'string' ? parsed.updatedAt : '',
     };

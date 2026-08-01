@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import type { Blueprint, BlueprintExport, SerializedNode } from '../types';
 import type { AppNode } from '../store/nodesStore';
 import { migrateIntegrations } from '../types/nodes';
+import { downloadBlob, sanitizeFilename } from './download';
 
 // Serialize nodes for export
 export function serializeNodesForExport(nodes: AppNode[]): SerializedNode[] {
@@ -28,21 +29,12 @@ export function exportToJSON(blueprint: Blueprint): string {
 // Download JSON file
 export function downloadJSON(blueprint: Blueprint, filename?: string) {
   const jsonString = exportToJSON(blueprint);
-  const blob = new Blob([jsonString], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-
-  const safeName = (blueprint.title || 'blueprint')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-
-  link.href = url;
-  link.download = filename || `${safeName}-v${blueprint.version}.blueprint.json`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  const safeName = sanitizeFilename(blueprint.title);
+  downloadBlob(
+    jsonString,
+    'application/json',
+    filename || `${safeName}-v${blueprint.version}.blueprint.json`
+  );
 }
 
 // Export to Excel format

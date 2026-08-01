@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { parkedQuestionKey, COVERAGE_LABELS, type CoverageArea, type ParkedQuestion } from './types';
-import { mergeParkedQuestions } from './parkedQuestions';
+import {
+  parkedQuestionKey,
+  emptyCoverage,
+  COVERAGE_LABELS,
+  type CoverageArea,
+  type ParkedQuestion,
+} from './types';
+import { mergeParkedQuestions, pruneCoveredParked, removeParkedByIds } from './parkedQuestions';
 
 /**
  * Mirror of the interviewer's private parseParkedQuestions helper (kept in
@@ -96,5 +102,49 @@ describe('mergeParkedQuestions', () => {
     const second = mergeParkedQuestions(first, [mk('steps', 'A', 'new reason')]);
     expect(second).toHaveLength(1);
     expect(second[0].why).toBe('new reason');
+  });
+});
+
+describe('removeParkedByIds (per-question resolution)', () => {
+  const mk = (area: CoverageArea, question: string): ParkedQuestion => ({
+    id: parkedQuestionKey(area, question),
+    question,
+    area,
+    why: '',
+  });
+
+  it('removes only the resolved question, keeping siblings in the same area', () => {
+    const list = [mk('exceptions', 'What if it times out?'), mk('exceptions', 'Who is paged?')];
+    const resolvedKey = parkedQuestionKey('exceptions', 'What if it times out?');
+    const after = removeParkedByIds(list, [resolvedKey]);
+    expect(after).toHaveLength(1);
+    expect(after[0].question).toBe('Who is paged?');
+  });
+
+  it('is a no-op when the id is not present', () => {
+    const list = [mk('steps', 'A')];
+    expect(removeParkedByIds(list, [parkedQuestionKey('steps', 'B')])).toEqual(list);
+  });
+});
+
+describe('pruneCoveredParked', () => {
+  const mk = (area: CoverageArea, question: string): ParkedQuestion => ({
+    id: parkedQuestionKey(area, question),
+    question,
+    area,
+    why: '',
+  });
+
+  it('drops parked questions whose area is fully covered', () => {
+    const coverage = { ...emptyCoverage(), systems: 'covered' as const };
+    const list = [mk('systems', 'Which CRM?'), mk('steps', 'First step?')];
+    const after = pruneCoveredParked(list, coverage);
+    expect(after.map((q) => q.area)).toEqual(['steps']);
+  });
+
+  it('keeps parked questions in a partial area', () => {
+    const coverage = { ...emptyCoverage(), exceptions: 'partial' as const };
+    const list = [mk('exceptions', 'What if it fails?')];
+    expect(pruneCoveredParked(list, coverage)).toHaveLength(1);
   });
 });

@@ -9,7 +9,7 @@ import type { AppNode } from '../../store/nodesStore';
 import type { BlueprintEdge, NodeData } from '../../types';
 import type { SerializedNode } from '../../types/blueprint';
 import { isOrchestrationPatternId } from '../patterns/patterns';
-import { mergeParkedQuestions, pruneCoveredParked } from './parkedQuestions';
+import { mergeParkedQuestions, pruneCoveredParked, removeParkedByIds } from './parkedQuestions';
 import { loadSession, saveSession, clearSession } from './interviewSessionStorage';
 import type { InterviewSession } from './types';
 import {
@@ -24,6 +24,7 @@ import {
   type InterviewerTurn,
   type InterviewMode,
   type ParkedQuestion,
+  type ParkedResolution,
 } from './types';
 
 const MODEL = AI_FEATURE_MODELS.interviewer;
@@ -78,7 +79,24 @@ function extractTurn(text: string): InterviewerTurn {
     done: parsed.done === true,
     recommendedPattern: parsePattern(parsed.recommendedPattern),
     parkedQuestions: parseParkedQuestions(parsed.parkedQuestions),
+    resolvedParked: parseResolvedParked(parsed.resolvedParked),
   };
+}
+
+// Parse the model's resolved-parked signals; drop anything without a known
+// area and non-empty question (mirrors parseParkedQuestions discipline).
+function parseResolvedParked(value: unknown): ParkedResolution[] {
+  if (!Array.isArray(value)) return [];
+  const out: ParkedResolution[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const p = entry as Record<string, unknown>;
+    const question = typeof p.question === 'string' ? p.question.trim() : '';
+    const area = p.area as CoverageArea;
+    if (!question || !(area in COVERAGE_LABELS)) continue;
+    out.push({ question, area });
+  }
+  return out;
 }
 
 // A parked question is valid only with a non-empty question and a known
@@ -270,11 +288,13 @@ export function useInterviewer() {
         setCoverage(turn.coverage);
         setIsDone(turn.done);
         if (turn.recommendedPattern) setRecommendedPattern(turn.recommendedPattern);
-        // Accumulate newly-parked questions (deduped), then drop any whose area
-        // is now covered — the owner answered it, so it is no longer a gap.
-        setParkedQuestions((prev) =>
-          pruneCoveredParked(mergeParkedQuestions(prev, turn.parkedQuestions), turn.coverage)
-        );
+        // Accumulate newly-parked questions (deduped), remove the specific ones
+        // the owner just answered, then drop any whose area is now fully covered.
+        setParkedQuestions((prev) => {
+          const merged = mergeParkedQuestions(prev, turn.parkedQuestions);
+          const resolvedKeys = turn.resolvedParked.map((r) => parkedQuestionKey(r.area, r.question));
+          return pruneCoveredParked(removeParkedByIds(merged, resolvedKeys), turn.coverage);
+        });
         setMessages([
           ...history,
           {
@@ -317,18 +337,24 @@ export function useInterviewer() {
     [runTurn]
   );
 
-  const sendAnswer = useCallback(
-    async (answer: string) => {
+  // Build a user turn: append the live canvas state to the API body, push it to
+  // the transcript, and run the turn. Shared by every send path below.
+  const sendUserTurn = useCallback(
+    async (displayText: string, apiBody: string) => {
       const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
-      const apiText = `${answer}\n\n## Current canvas state\n${canvasState}`;
-      const history: ChatMessage[] = [
-        ...messages,
-        { role: 'user', displayText: answer, apiText },
-      ];
+      const apiText = `${apiBody}\n\n## Current canvas state\n${canvasState}`;
+      const history: ChatMessage[] = [...messages, { role: 'user', displayText, apiText }];
       setMessages(history);
       await runTurn(history);
     },
     [messages, runTurn]
+  );
+
+  const sendAnswer = useCallback(
+    async (answer: string) => {
+      await sendUserTurn(answer, answer);
+    },
+    [sendUserTurn]
   );
 
   // Explicitly defer the current question. Sends a canonical deferral (any
@@ -337,17 +363,13 @@ export function useInterviewer() {
   const deferQuestion = useCallback(
     async (partialText?: string) => {
       const trimmed = partialText?.trim();
-      const answer = trimmed
+      const apiBody = trimmed
         ? `${trimmed}\n\n[[DEFER]]`
         : "[[DEFER]] I don't have this answer yet — park it for later.";
-      const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
-      const apiText = `${answer}\n\n## Current canvas state\n${canvasState}`;
       const displayText = trimmed ? `${trimmed} (deferred)` : "I don't know — I'll get this later.";
-      const history: ChatMessage[] = [...messages, { role: 'user', displayText, apiText }];
-      setMessages(history);
-      await runTurn(history);
+      await sendUserTurn(displayText, apiBody);
     },
-    [messages, runTurn]
+    [sendUserTurn]
   );
 
   const retry = useCallback(async () => {
@@ -369,6 +391,7 @@ export function useInterviewer() {
     setMessages(session.messages);
     setCoverage(session.coverage);
     setParkedQuestions(session.parkedQuestions);
+    setRecommendedPattern(null);
     setIsDone(false);
     setError(null);
   }, []);
@@ -380,16 +403,10 @@ export function useInterviewer() {
     const list = parkedQuestions
       .map((q, i) => `${i + 1}. [${q.area}] ${q.question}`)
       .join('\n');
-    const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
-    const apiText = `I'm ready to answer the questions we parked earlier. Here are the still-open ones:\n${list}\n\nAsk me the first one now (one at a time, as usual). As I answer each, patch the canvas and drop it from parkedQuestions.\n\n## Current canvas state\n${canvasState}`;
-    const history: ChatMessage[] = [
-      ...messages,
-      { role: 'user', displayText: "Let's fill in the parked questions.", apiText },
-    ];
-    setMessages(history);
+    const apiBody = `I'm ready to answer the questions we parked earlier. Here are the still-open ones:\n${list}\n\nAsk me the first one now (one at a time, as usual). As I answer each, patch the canvas and report it in resolvedParked so it clears from the parked list.`;
     setIsDone(false);
-    await runTurn(history);
-  }, [parkedQuestions, messages, runTurn]);
+    await sendUserTurn("Let's fill in the parked questions.", apiBody);
+  }, [parkedQuestions, sendUserTurn]);
 
   // Apply the recommended (or a chosen) pattern to the blueprint metadata.
   const acceptPattern = useCallback((patternId?: string) => {

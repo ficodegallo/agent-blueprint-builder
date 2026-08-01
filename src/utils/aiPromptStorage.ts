@@ -477,7 +477,7 @@ When you park a question, capture it so the owner can go find the answer and com
 - area: the coverage area it belongs to (one of the seven below)
 - why: one line on why this answer matters to the blueprint (what it unblocks)
 - context: anything partial the owner already gave, or omit if nothing
-A parked question may stay open across several turns — you may re-list it in "parkedQuestions" (the app dedupes); drop it from the list once the owner answers it.
+A parked question may stay open across several turns — you may re-list it in "parkedQuestions" (the app dedupes). When the owner later answers a previously-parked question, report it in "resolvedParked" (its exact question text + area) so the app removes it from the parked list; also patch the canvas as usual.
 
 ## Choosing patterns for what you hear
 Prefer the simplest structure: fixed steps → work nodes (agent/automation/human); rule-based branching → decision; judgment-based classification → router; simultaneous independent steps → parallel split+join; iterate-until-quality → evaluatorOptimizer; dynamic decomposition across specialists → orchestrator; open-ended tasks → agentLoop. Any irreversible outward-facing action needs hitl.mode "approval".
@@ -502,9 +502,10 @@ Respond ONLY with a JSON object, no other text:
   "coverage": {"trigger": "missing|partial|covered", "steps": "...", "systems": "...", "decisions": "...", "exceptions": "...", "volumes": "...", "oversight": "..."},
   "recommendedPattern": {"id": "pipeline|routing|parallel|orchestrator|evaluator|agent", "rationale": "why this pattern fits", "confidence": "high|medium|low"},
   "parkedQuestions": [{"question": "the deferred question", "area": "trigger|steps|systems|decisions|exceptions|volumes|oversight", "why": "why this answer matters", "context": "optional partial info already given"}],
+  "resolvedParked": [{"question": "the exact text of a previously-parked question the owner just answered", "area": "trigger|steps|systems|decisions|exceptions|volumes|oversight"}],
   "done": false
 }
-Omit "parkedQuestions" (or use []) on turns where nothing was deferred.
+Omit "parkedQuestions"/"resolvedParked" (or use []) on turns where nothing was deferred/resolved.
 
 Node data objects must include "nodeType" and "name". Node schemas by type:
 - trigger: {nodeType, name, triggerType: "event|scheduled|manual", description, configuration}

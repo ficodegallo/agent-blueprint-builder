@@ -63,6 +63,13 @@ export function parkedQuestionKey(area: CoverageArea, question: string): string 
   return `${area}:${normalized}`;
 }
 
+// The model's signal that the owner just answered a previously-parked question,
+// so it can be removed from the parked list (resolve is the inverse of park).
+export interface ParkedResolution {
+  question: string;
+  area: CoverageArea;
+}
+
 // Canvas mutations the interviewer can apply
 export type CanvasAction =
   | { op: 'addNode'; id: string; data: NodeData }
@@ -80,6 +87,8 @@ export interface InterviewerTurn {
   recommendedPattern?: InterviewerPatternRecommendation;
   // Questions the owner deferred this turn (empty when nothing was parked).
   parkedQuestions: ParkedQuestion[];
+  // Previously-parked questions the owner answered this turn (empty when none).
+  resolvedParked: ParkedResolution[];
 }
 
 export interface ChatMessage {

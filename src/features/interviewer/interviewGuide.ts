@@ -1,3 +1,4 @@
+import { downloadBlob, sanitizeFilename } from '../../utils/download';
 import { COVERAGE_LABELS, type CoverageArea, type ParkedQuestion } from './types';
 
 /**
@@ -48,19 +49,5 @@ export function downloadInterviewGuide(
   blueprintTitle?: string
 ): void {
   const markdown = buildInterviewGuideMarkdown(parkedQuestions, blueprintTitle);
-  const blob = new Blob([markdown], { type: 'text/markdown' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-
-  const safeName = (blueprintTitle || 'blueprint')
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '');
-
-  link.href = url;
-  link.download = `${safeName || 'blueprint'}-interview-guide.md`;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
+  downloadBlob(markdown, 'text/markdown', `${sanitizeFilename(blueprintTitle)}-interview-guide.md`);
 }
