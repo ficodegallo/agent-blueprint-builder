@@ -1,9 +1,23 @@
-import { useEffect, useRef, useState } from 'react';
-import { Check, Flame, Loader2, MessageCircleQuestion, RotateCcw, Send, Sparkles, Workflow, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Check,
+  Download,
+  Flame,
+  ListChecks,
+  Loader2,
+  MessageCircleQuestion,
+  RotateCcw,
+  Send,
+  SkipForward,
+  Sparkles,
+  Workflow,
+  X,
+} from 'lucide-react';
 import { useUIStore, useNodesStore, useBlueprintStore } from '../../store';
 import { useInterviewer } from './useInterviewer';
 import { getPattern } from '../patterns/patterns';
-import { COVERAGE_LABELS, type CoverageArea, type CoverageStatus } from './types';
+import { downloadInterviewGuide } from './interviewGuide';
+import { COVERAGE_LABELS, type CoverageArea, type CoverageStatus, type InterviewSession } from './types';
 
 const COVERAGE_STYLES: Record<CoverageStatus, string> = {
   missing: 'bg-gray-100 text-gray-400 border-gray-200',
@@ -24,21 +38,46 @@ export function InterviewerPanel() {
     isDone,
     error,
     recommendedPattern,
+    parkedQuestions,
     acceptPattern,
     start,
     sendAnswer,
+    deferQuestion,
     retry,
+    getSavedSession,
+    resumeSession,
+    resumeParked,
     reset,
   } = useInterviewer();
   const activePattern = useBlueprintStore((s) => s.orchestrationPattern);
+  const blueprintTitle = useBlueprintStore((s) => s.title);
 
   const [processContext, setProcessContext] = useState('');
   const [answer, setAnswer] = useState('');
+  const [savedSession, setSavedSession] = useState<InterviewSession | null>(null);
+  const [showParked, setShowParked] = useState(false);
   const transcriptRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     transcriptRef.current?.scrollTo({ top: transcriptRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages, isThinking]);
+
+  // When the panel opens on the start screen, surface any persisted session
+  // so the owner can resume instead of starting over.
+  useEffect(() => {
+    if (isOpen && mode === null) setSavedSession(getSavedSession());
+  }, [isOpen, mode, getSavedSession]);
+
+  // Group parked questions by coverage area for the collapsible list.
+  const parkedByArea = useMemo(() => {
+    const groups = new Map<CoverageArea, typeof parkedQuestions>();
+    for (const q of parkedQuestions) {
+      const list = groups.get(q.area) ?? [];
+      list.push(q);
+      groups.set(q.area, list);
+    }
+    return groups;
+  }, [parkedQuestions]);
 
   if (!isOpen) return null;
 
@@ -49,6 +88,18 @@ export function InterviewerPanel() {
     sendAnswer(answer.trim());
     setAnswer('');
   };
+
+  const handleSkip = () => {
+    if (isThinking) return;
+    deferQuestion(answer.trim());
+    setAnswer('');
+  };
+
+  const handleResume = () => {
+    if (savedSession) resumeSession(savedSession);
+  };
+
+  const parkedCount = parkedQuestions.length;
 
   return (
     <div className="fixed right-0 top-12 bottom-0 w-[28rem] bg-white border-l border-gray-200 shadow-xl z-40 flex flex-col">
@@ -85,6 +136,39 @@ export function InterviewerPanel() {
       {!started ? (
         /* Mode selection */
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {savedSession && (
+            <div className="p-3 bg-indigo-50 border border-indigo-200 rounded-lg space-y-2">
+              <div className="text-sm font-medium text-indigo-900">
+                Resume your interview?
+              </div>
+              <p className="text-xs text-indigo-700">
+                A saved interview is here
+                {savedSession.parkedQuestions.length > 0
+                  ? ` with ${savedSession.parkedQuestions.length} parked question${
+                      savedSession.parkedQuestions.length === 1 ? '' : 's'
+                    } to fill in.`
+                  : '.'}
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleResume}
+                  className="flex-1 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-md transition-colors"
+                >
+                  Resume
+                </button>
+                <button
+                  onClick={() => {
+                    reset();
+                    setSavedSession(null);
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-md transition-colors"
+                >
+                  Start over
+                </button>
+              </div>
+            </div>
+          )}
+
           <p className="text-sm text-gray-600">
             Interview a process owner and build the blueprint live on the canvas — no documents
             needed. The canvas updates after every answer.
@@ -153,6 +237,59 @@ export function InterviewerPanel() {
               </span>
             ))}
           </div>
+
+          {/* Parked questions surface */}
+          {parkedCount > 0 && (
+            <div className="px-4 py-2 border-b border-gray-100 bg-amber-50/50 shrink-0">
+              <div className="flex items-center justify-between gap-2">
+                <button
+                  onClick={() => setShowParked((v) => !v)}
+                  className="flex items-center gap-1.5 text-xs font-medium text-amber-800 hover:text-amber-900"
+                >
+                  <ListChecks className="w-3.5 h-3.5" />
+                  {parkedCount} parked question{parkedCount === 1 ? '' : 's'}
+                  <span className="text-amber-500">{showParked ? '▲' : '▼'}</span>
+                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => downloadInterviewGuide(parkedQuestions, blueprintTitle)}
+                    title="Download an interview guide with these questions"
+                    className="flex items-center gap-1 px-2 py-1 text-xs font-medium text-amber-800 hover:bg-amber-100 rounded-md transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" /> Guide
+                  </button>
+                  <button
+                    onClick={resumeParked}
+                    disabled={isThinking}
+                    title="Re-ask the parked questions so you can answer them now"
+                    className="px-2 py-1 text-xs font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors disabled:opacity-40"
+                  >
+                    Answer these
+                  </button>
+                </div>
+              </div>
+              {showParked && (
+                <div className="mt-2 space-y-2">
+                  {(Object.keys(COVERAGE_LABELS) as CoverageArea[])
+                    .filter((area) => parkedByArea.has(area))
+                    .map((area) => (
+                      <div key={area}>
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-amber-700">
+                          {COVERAGE_LABELS[area]}
+                        </div>
+                        <ul className="mt-0.5 space-y-1">
+                          {parkedByArea.get(area)!.map((q) => (
+                            <li key={q.id} className="text-xs text-gray-700">
+                              • {q.question}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Recommended pattern chip */}
           {recommendedPattern && (() => {
@@ -248,15 +385,30 @@ export function InterviewerPanel() {
                 disabled={isThinking}
                 className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 resize-none disabled:bg-gray-50"
               />
-              <button
-                onClick={handleSend}
-                disabled={isThinking || !answer.trim()}
-                className="px-3 self-end py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-40"
-                title="Send"
-              >
-                <Send className="w-4 h-4" />
-              </button>
+              <div className="flex flex-col gap-1 self-end">
+                <button
+                  onClick={handleSend}
+                  disabled={isThinking || !answer.trim()}
+                  className="px-3 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors disabled:opacity-40"
+                  title="Send"
+                >
+                  <Send className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={handleSkip}
+                  disabled={isThinking}
+                  className="px-3 py-2 text-gray-500 border border-gray-300 rounded-md hover:bg-gray-100 transition-colors disabled:opacity-40"
+                  title="I don't know — park this question for later"
+                >
+                  <SkipForward className="w-4 h-4" />
+                </button>
+              </div>
             </div>
+            <p className="mt-1.5 text-xs text-gray-400">
+              Don't have an answer? Say <span className="italic">"I don't know"</span> or tap{' '}
+              <SkipForward className="inline w-3 h-3 -mt-0.5" /> — we'll save it to an interview guide
+              you can fill in later.
+            </p>
           </div>
         </>
       )}
