@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { getApiKey } from '../smartImport/hooks/useClaudeApi';
 import { getActivePrompts } from '../../utils/aiPromptStorage';
@@ -10,6 +10,8 @@ import type { BlueprintEdge, NodeData } from '../../types';
 import type { SerializedNode } from '../../types/blueprint';
 import { isOrchestrationPatternId } from '../patterns/patterns';
 import { mergeParkedQuestions, pruneCoveredParked } from './parkedQuestions';
+import { loadSession, saveSession, clearSession } from './interviewSessionStorage';
+import type { InterviewSession } from './types';
 import {
   emptyCoverage,
   parkedQuestionKey,
@@ -127,6 +129,22 @@ export function useInterviewer() {
   const [recommendedPattern, setRecommendedPattern] =
     useState<InterviewerPatternRecommendation | null>(null);
   const [parkedQuestions, setParkedQuestions] = useState<ParkedQuestion[]>([]);
+  const [processContext, setProcessContext] = useState('');
+
+  // Persist the session per-blueprint after any meaningful change so closing
+  // the panel or reloading doesn't lose the interview (R6).
+  useEffect(() => {
+    if (!mode) return;
+    const blueprintId = useBlueprintStore.getState().id;
+    saveSession(blueprintId, {
+      mode,
+      processContext,
+      messages,
+      coverage,
+      parkedQuestions,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [mode, processContext, messages, coverage, parkedQuestions]);
 
   // Apply canvas actions from a turn; returns how many succeeded
   const applyActions = useCallback((actions: CanvasAction[]): number => {
@@ -281,6 +299,7 @@ export function useInterviewer() {
       setIsDone(false);
       setCoverage(emptyCoverage());
       setParkedQuestions([]);
+      setProcessContext(processContext);
 
       const prompts = getActivePrompts('interviewer');
       const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
@@ -336,6 +355,42 @@ export function useInterviewer() {
     await runTurn(messages);
   }, [messages, runTurn]);
 
+  // Return a persisted session for the current blueprint, if any (panel uses
+  // this to offer Resume vs Start over on open).
+  const getSavedSession = useCallback((): InterviewSession | null => {
+    return loadSession(useBlueprintStore.getState().id);
+  }, []);
+
+  // Rehydrate hook state from a persisted session so the transcript, coverage,
+  // and parked questions reappear.
+  const resumeSession = useCallback((session: InterviewSession) => {
+    setMode(session.mode);
+    setProcessContext(session.processContext);
+    setMessages(session.messages);
+    setCoverage(session.coverage);
+    setParkedQuestions(session.parkedQuestions);
+    setIsDone(false);
+    setError(null);
+  }, []);
+
+  // Kick off a focused pass that re-asks the still-open parked questions one at
+  // a time so the owner can now fill them in (R7).
+  const resumeParked = useCallback(async () => {
+    if (parkedQuestions.length === 0) return;
+    const list = parkedQuestions
+      .map((q, i) => `${i + 1}. [${q.area}] ${q.question}`)
+      .join('\n');
+    const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
+    const apiText = `I'm ready to answer the questions we parked earlier. Here are the still-open ones:\n${list}\n\nAsk me the first one now (one at a time, as usual). As I answer each, patch the canvas and drop it from parkedQuestions.\n\n## Current canvas state\n${canvasState}`;
+    const history: ChatMessage[] = [
+      ...messages,
+      { role: 'user', displayText: "Let's fill in the parked questions.", apiText },
+    ];
+    setMessages(history);
+    setIsDone(false);
+    await runTurn(history);
+  }, [parkedQuestions, messages, runTurn]);
+
   // Apply the recommended (or a chosen) pattern to the blueprint metadata.
   const acceptPattern = useCallback((patternId?: string) => {
     const id = patternId ?? recommendedPattern?.id;
@@ -344,6 +399,7 @@ export function useInterviewer() {
   }, [recommendedPattern]);
 
   const reset = useCallback(() => {
+    clearSession(useBlueprintStore.getState().id);
     setMode(null);
     setMessages([]);
     setCoverage(emptyCoverage());
@@ -351,6 +407,7 @@ export function useInterviewer() {
     setError(null);
     setRecommendedPattern(null);
     setParkedQuestions([]);
+    setProcessContext('');
   }, []);
 
   return {
@@ -367,6 +424,9 @@ export function useInterviewer() {
     sendAnswer,
     deferQuestion,
     retry,
+    getSavedSession,
+    resumeSession,
+    resumeParked,
     reset,
   };
 }
