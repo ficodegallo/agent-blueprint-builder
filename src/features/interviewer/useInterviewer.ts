@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { getApiKey } from '../smartImport/hooks/useClaudeApi';
 import { getActivePrompts } from '../../utils/aiPromptStorage';
@@ -9,14 +9,22 @@ import type { AppNode } from '../../store/nodesStore';
 import type { BlueprintEdge, NodeData } from '../../types';
 import type { SerializedNode } from '../../types/blueprint';
 import { isOrchestrationPatternId } from '../patterns/patterns';
+import { mergeParkedQuestions, pruneCoveredParked, removeParkedByIds } from './parkedQuestions';
+import { loadSession, saveSession, clearSession } from './interviewSessionStorage';
+import type { InterviewSession } from './types';
 import {
   emptyCoverage,
+  parkedQuestionKey,
+  COVERAGE_LABELS,
   type CanvasAction,
   type ChatMessage,
   type Coverage,
+  type CoverageArea,
   type InterviewerPatternRecommendation,
   type InterviewerTurn,
   type InterviewMode,
+  type ParkedQuestion,
+  type ParkedResolution,
 } from './types';
 
 const MODEL = AI_FEATURE_MODELS.interviewer;
@@ -70,7 +78,47 @@ function extractTurn(text: string): InterviewerTurn {
     coverage: { ...emptyCoverage(), ...(parsed.coverage || {}) },
     done: parsed.done === true,
     recommendedPattern: parsePattern(parsed.recommendedPattern),
+    parkedQuestions: parseParkedQuestions(parsed.parkedQuestions),
+    resolvedParked: parseResolvedParked(parsed.resolvedParked),
   };
+}
+
+// Parse the model's resolved-parked signals; drop anything without a known
+// area and non-empty question (mirrors parseParkedQuestions discipline).
+function parseResolvedParked(value: unknown): ParkedResolution[] {
+  if (!Array.isArray(value)) return [];
+  const out: ParkedResolution[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const p = entry as Record<string, unknown>;
+    const question = typeof p.question === 'string' ? p.question.trim() : '';
+    const area = p.area as CoverageArea;
+    if (!question || !(area in COVERAGE_LABELS)) continue;
+    out.push({ question, area });
+  }
+  return out;
+}
+
+// A parked question is valid only with a non-empty question and a known
+// coverage area; anything else is dropped (mirrors parsePattern's discipline).
+function parseParkedQuestions(value: unknown): ParkedQuestion[] {
+  if (!Array.isArray(value)) return [];
+  const out: ParkedQuestion[] = [];
+  for (const entry of value) {
+    if (!entry || typeof entry !== 'object') continue;
+    const p = entry as Record<string, unknown>;
+    const question = typeof p.question === 'string' ? p.question.trim() : '';
+    const area = p.area as CoverageArea;
+    if (!question || !(area in COVERAGE_LABELS)) continue;
+    out.push({
+      id: parkedQuestionKey(area, question),
+      question,
+      area,
+      why: typeof p.why === 'string' ? p.why : '',
+      context: typeof p.context === 'string' && p.context.trim() ? p.context.trim() : undefined,
+    });
+  }
+  return out;
 }
 
 // Validate an inferred pattern; drop anything with an out-of-catalog id.
@@ -98,6 +146,23 @@ export function useInterviewer() {
   const [error, setError] = useState<string | null>(null);
   const [recommendedPattern, setRecommendedPattern] =
     useState<InterviewerPatternRecommendation | null>(null);
+  const [parkedQuestions, setParkedQuestions] = useState<ParkedQuestion[]>([]);
+  const [processContext, setProcessContext] = useState('');
+
+  // Persist the session per-blueprint after any meaningful change so closing
+  // the panel or reloading doesn't lose the interview (R6).
+  useEffect(() => {
+    if (!mode) return;
+    const blueprintId = useBlueprintStore.getState().id;
+    saveSession(blueprintId, {
+      mode,
+      processContext,
+      messages,
+      coverage,
+      parkedQuestions,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [mode, processContext, messages, coverage, parkedQuestions]);
 
   // Apply canvas actions from a turn; returns how many succeeded
   const applyActions = useCallback((actions: CanvasAction[]): number => {
@@ -223,6 +288,13 @@ export function useInterviewer() {
         setCoverage(turn.coverage);
         setIsDone(turn.done);
         if (turn.recommendedPattern) setRecommendedPattern(turn.recommendedPattern);
+        // Accumulate newly-parked questions (deduped), remove the specific ones
+        // the owner just answered, then drop any whose area is now fully covered.
+        setParkedQuestions((prev) => {
+          const merged = mergeParkedQuestions(prev, turn.parkedQuestions);
+          const resolvedKeys = turn.resolvedParked.map((r) => parkedQuestionKey(r.area, r.question));
+          return pruneCoveredParked(removeParkedByIds(merged, resolvedKeys), turn.coverage);
+        });
         setMessages([
           ...history,
           {
@@ -246,6 +318,8 @@ export function useInterviewer() {
       setMode(selectedMode);
       setIsDone(false);
       setCoverage(emptyCoverage());
+      setParkedQuestions([]);
+      setProcessContext(processContext);
 
       const prompts = getActivePrompts('interviewer');
       const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
@@ -263,24 +337,76 @@ export function useInterviewer() {
     [runTurn]
   );
 
-  const sendAnswer = useCallback(
-    async (answer: string) => {
+  // Build a user turn: append the live canvas state to the API body, push it to
+  // the transcript, and run the turn. Shared by every send path below.
+  const sendUserTurn = useCallback(
+    async (displayText: string, apiBody: string) => {
       const canvasState = serializeCanvas(useNodesStore.getState().nodes, useEdgesStore.getState().edges);
-      const apiText = `${answer}\n\n## Current canvas state\n${canvasState}`;
-      const history: ChatMessage[] = [
-        ...messages,
-        { role: 'user', displayText: answer, apiText },
-      ];
+      const apiText = `${apiBody}\n\n## Current canvas state\n${canvasState}`;
+      const history: ChatMessage[] = [...messages, { role: 'user', displayText, apiText }];
       setMessages(history);
       await runTurn(history);
     },
     [messages, runTurn]
   );
 
+  const sendAnswer = useCallback(
+    async (answer: string) => {
+      await sendUserTurn(answer, answer);
+    },
+    [sendUserTurn]
+  );
+
+  // Explicitly defer the current question. Sends a canonical deferral (any
+  // partial text the owner typed + a [[DEFER]] marker) so the model reliably
+  // parks the current question even when the owner types nothing.
+  const deferQuestion = useCallback(
+    async (partialText?: string) => {
+      const trimmed = partialText?.trim();
+      const apiBody = trimmed
+        ? `${trimmed}\n\n[[DEFER]]`
+        : "[[DEFER]] I don't have this answer yet — park it for later.";
+      const displayText = trimmed ? `${trimmed} (deferred)` : "I don't know — I'll get this later.";
+      await sendUserTurn(displayText, apiBody);
+    },
+    [sendUserTurn]
+  );
+
   const retry = useCallback(async () => {
     if (messages.length === 0) return;
     await runTurn(messages);
   }, [messages, runTurn]);
+
+  // Return a persisted session for the current blueprint, if any (panel uses
+  // this to offer Resume vs Start over on open).
+  const getSavedSession = useCallback((): InterviewSession | null => {
+    return loadSession(useBlueprintStore.getState().id);
+  }, []);
+
+  // Rehydrate hook state from a persisted session so the transcript, coverage,
+  // and parked questions reappear.
+  const resumeSession = useCallback((session: InterviewSession) => {
+    setMode(session.mode);
+    setProcessContext(session.processContext);
+    setMessages(session.messages);
+    setCoverage(session.coverage);
+    setParkedQuestions(session.parkedQuestions);
+    setRecommendedPattern(null);
+    setIsDone(false);
+    setError(null);
+  }, []);
+
+  // Kick off a focused pass that re-asks the still-open parked questions one at
+  // a time so the owner can now fill them in (R7).
+  const resumeParked = useCallback(async () => {
+    if (parkedQuestions.length === 0) return;
+    const list = parkedQuestions
+      .map((q, i) => `${i + 1}. [${q.area}] ${q.question}`)
+      .join('\n');
+    const apiBody = `I'm ready to answer the questions we parked earlier. Here are the still-open ones:\n${list}\n\nAsk me the first one now (one at a time, as usual). As I answer each, patch the canvas and report it in resolvedParked so it clears from the parked list.`;
+    setIsDone(false);
+    await sendUserTurn("Let's fill in the parked questions.", apiBody);
+  }, [parkedQuestions, sendUserTurn]);
 
   // Apply the recommended (or a chosen) pattern to the blueprint metadata.
   const acceptPattern = useCallback((patternId?: string) => {
@@ -290,12 +416,15 @@ export function useInterviewer() {
   }, [recommendedPattern]);
 
   const reset = useCallback(() => {
+    clearSession(useBlueprintStore.getState().id);
     setMode(null);
     setMessages([]);
     setCoverage(emptyCoverage());
     setIsDone(false);
     setError(null);
     setRecommendedPattern(null);
+    setParkedQuestions([]);
+    setProcessContext('');
   }, []);
 
   return {
@@ -306,10 +435,15 @@ export function useInterviewer() {
     isDone,
     error,
     recommendedPattern,
+    parkedQuestions,
     acceptPattern,
     start,
     sendAnswer,
+    deferQuestion,
     retry,
+    getSavedSession,
+    resumeSession,
+    resumeParked,
     reset,
   };
 }
