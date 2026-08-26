@@ -246,6 +246,36 @@ export function exportToExcel(blueprint: Blueprint, filename?: string) {
     XLSX.utils.book_append_sheet(workbook, parkingLotSheet, 'Parking Lot');
   }
 
+  // Sheet 5b: Evals (if any) — dismissed proposals are excluded
+  const activeEvals = (blueprint.evals || []).filter((e) => e.status !== 'dismissed');
+  if (activeEvals.length > 0) {
+    const evalsData = [
+      ['#', 'Eval', 'Dimension', 'Scope', 'Grader', 'Priority', 'Question', 'Pass Criteria', 'Data Needed', 'Failure Mode'],
+    ];
+
+    activeEvals.forEach((item, index) => {
+      const scope = item.linkedNodeId
+        ? blueprint.nodes.find((n) => n.id === item.linkedNodeId)?.data.name || item.linkedNodeId
+        : 'Blueprint Overall';
+
+      evalsData.push([
+        String(index + 1),
+        item.title,
+        item.dimension,
+        scope,
+        item.graderType,
+        item.priority,
+        item.question || '',
+        item.passCriteria || '',
+        item.dataNeeded || '',
+        item.failureMode || '',
+      ]);
+    });
+
+    const evalsSheet = XLSX.utils.aoa_to_sheet(evalsData);
+    XLSX.utils.book_append_sheet(workbook, evalsSheet, 'Evals');
+  }
+
   // Sheet 6: Comments (if any)
   if (blueprint.comments && blueprint.comments.length > 0) {
     const commentsData = [
@@ -757,6 +787,51 @@ export function exportToPDF(blueprint: Blueprint, filename?: string, canvasImage
         3: { cellWidth: 25 },
         4: { cellWidth: 40 },
         5: { cellWidth: 35 },
+      },
+    });
+  }
+
+  // Evaluation Plan — how the team will know the built workflow is working
+  const pdfEvals = (blueprint.evals || []).filter((e) => e.status !== 'dismissed');
+  if (pdfEvals.length > 0) {
+    doc.addPage();
+    yPosition = 20;
+
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Evaluation Plan', 20, yPosition);
+    yPosition += 10;
+
+    const evalsTableData = pdfEvals.map((item) => {
+      const scope = item.linkedNodeId
+        ? blueprint.nodes.find((n) => n.id === item.linkedNodeId)?.data.name || item.linkedNodeId
+        : 'Blueprint Overall';
+      return [
+        item.title,
+        item.dimension,
+        scope,
+        item.graderType,
+        item.question || '—',
+        item.passCriteria || '—',
+        item.dataNeeded || '—',
+      ];
+    });
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Eval', 'Dimension', 'Scope', 'Grader', 'Question', 'Pass Criteria', 'Data Needed']],
+      body: evalsTableData,
+      theme: 'grid',
+      headStyles: { fillColor: [59, 130, 246], fontSize: 9, fontStyle: 'bold' },
+      bodyStyles: { fontSize: 8 },
+      columnStyles: {
+        0: { cellWidth: 28 },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 24 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 38 },
+        5: { cellWidth: 30 },
+        6: { cellWidth: 30 },
       },
     });
   }

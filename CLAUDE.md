@@ -62,7 +62,7 @@ src/
 - `src/hooks/useGoalEvaluate.ts` - AI-powered goal evaluation and optimization
 - `src/hooks/useApiDiscovery.ts` - AI-powered API endpoint discovery for integrations
 - `src/components/dialogs/ApiDiscoveryDialog.tsx` - API discovery results modal with endpoint cards
-- `src/utils/aiPromptStorage.ts` - Centralized AI prompt storage for all 6 AI features
+- `src/utils/aiPromptStorage.ts` - Centralized AI prompt storage for all AI features
 - `src/components/dialogs/AIPromptAdminDialog.tsx` - Tabbed admin dialog for viewing/editing all AI prompts
 - `src/utils/validation.ts` - Blueprint validation rules
 - `src/utils/export.ts` - JSON, Excel, and PDF export with Integration Details sheet
@@ -362,6 +362,18 @@ Conversational panel (Interview button in the editor header) that builds or stre
 - **Mechanics**: the model returns JSON `{message, actions[], coverage, recommendedPattern?, parkedQuestions[], resolvedParked[], done}`; actions (addNode/updateNode/addEdge/removeNode/removeEdge) are applied to the Zustand stores immediately, with auto-layout re-run when nodes are added. Prompts editable in the AI Prompt Admin (`interviewer` feature key).
 - **Files**: `src/features/interviewer/` (useInterviewer hook, InterviewerPanel, types, parkedQuestions, interviewGuide, interviewSessionStorage), prompts in `src/utils/aiPromptStorage.ts`. Shared download helper in `src/utils/download.ts`.
 
+## Workflow Evals
+
+Every blueprint carries an **evals** collection (`src/types/evals.ts`) — the checks that tell you whether the built workflow is working. Evals are a *specification* for the engineering team; the builder never runs or scores anything.
+
+- **Where**: an **Evals** button in the editor header opens a slide-over panel (`src/components/panels/EvalsPanel.tsx`), modeled on the Parking Lot. Items are workflow-level (`linkedNodeId: null` → "Blueprint Overall") or pinned to one node. Manual authoring/editing happens in `EvalItemDialog`.
+- **Shape**: each eval carries a binary pass/fail `question` (one criterion), `passCriteria`, `graderType` (deterministic / llm-judge / human-review / hybrid), `dataNeeded`, the `failureMode` it protects against, a `dimension` (outcome, trajectory, quality, safety, oversight, efficiency), `priority`, `status` (proposed / accepted / dismissed) and `origin` (ai / manual).
+- **Generation**: "Generate evals" calls the `evalGenerate` AI feature (`src/hooks/useEvalGenerate.ts`), grounded in the whole workflow — `serializeBlueprintMetadata` + `serializeBlueprintForAnalysis` (shared with the Best Practices check, `src/utils/blueprintSerializer.ts`) — plus a built-in eval rulebook (`src/data/defaultEvalPractices.ts`) that always applies ahead of prompt customization. It asks for 5-6 evals, at least two workflow-level, spanning three or more dimensions. Responses are normalized by `parseEvalResponse` (unknown enums fall back, hallucinated node ids degrade to workflow-level, capped at 8).
+- **Refresh is additive by construction**: generation never writes to existing evals. Candidates go through `mergeEvalCandidates` (`src/features/evals/evalMerge.ts`), which dedupes on a normalized `dimension:scope:title` key against **every** existing item — accepted, proposed *and* dismissed. Dismissed items are retained as tombstones so a rejected eval is never re-proposed. Proposals land in a review section; Accept / Edit / Dismiss / Accept all.
+- **Persistence**: `Blueprint.evals`, localStorage cache + API column `evals` (migration `db/migrations/003_evals.sql`). Apply the migration before deploying a client that writes evals.
+- **Exports**: Word BRD section "6. Evaluation Plan" (Appendices moved to 7), an "Evals" Excel sheet, and a PDF Evaluation Plan table. Dismissed evals are excluded from all three.
+- **Files**: `src/types/evals.ts`, `src/store/evalsStore.ts`, `src/features/evals/` (parseEvalResponse, evalMerge), `src/hooks/useEvalGenerate.ts`, `src/components/panels/EvalsPanel.tsx`, `src/components/dialogs/EvalItemDialog.tsx`, `src/data/defaultEvalPractices.ts`, `src/utils/blueprintSerializer.ts`.
+
 ## AI Model Configuration
 
 All AI features read model IDs from `src/constants/aiModels.ts` (`AI_FEATURE_MODELS` map, default `claude-opus-4-8`). Update model IDs there, not in individual hooks.
@@ -386,6 +398,7 @@ All AI features read model IDs from `src/constants/aiModels.ts` (`AI_FEATURE_MOD
 - W009: Parallel split with no join anywhere
 - W010: Orchestrator with no workers
 - W011: Blueprint's orchestration pattern expects a signature node type the canvas lacks (advisory; pipeline/freeform never trigger it)
+- W012: Blueprint is marked In Review/Approved (with 3+ nodes) but has no evals defined (advisory; never fires on a Draft)
 
 **AI Best Practices check:** a built-in agent-design rulebook (`src/data/defaultBestPractices.ts`) always applies — verifiable success criteria, bounded loops, human gates on irreversible actions, simplest-pattern-first, one-agent-one-concern, failure paths on external calls — with user-defined practices appended when configured.
 

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNodesStore, useEdgesStore, useBlueprintStore } from '../store';
+import { useNodesStore, useEdgesStore, useBlueprintStore, useEvalsStore, selectActiveEvalCount } from '../store';
 import { useBlueprintsLibraryStore } from '../store/blueprintsLibraryStore';
 import { validateBlueprint, type ValidationResult } from '../utils/validation';
 
@@ -18,6 +18,8 @@ export function useValidation(): ValidationResult {
   const edges = useEdgesStore((state) => state.edges);
   const blueprints = useBlueprintsLibraryStore((state) => state.blueprints);
   const orchestrationPattern = useBlueprintStore((state) => state.orchestrationPattern);
+  const status = useBlueprintStore((state) => state.status);
+  const evalCount = useEvalsStore(selectActiveEvalCount);
 
   const existingBlueprintIds = useMemo(
     () => new Set(blueprints.keys()),
@@ -25,8 +27,11 @@ export function useValidation(): ValidationResult {
   );
 
   const validationResult = useMemo(() => {
-    return validateBlueprint(nodes, edges, existingBlueprintIds, orchestrationPattern);
-  }, [nodes, edges, existingBlueprintIds, orchestrationPattern]);
+    return validateBlueprint(nodes, edges, existingBlueprintIds, orchestrationPattern, {
+      evalCount,
+      status,
+    });
+  }, [nodes, edges, existingBlueprintIds, orchestrationPattern, evalCount, status]);
 
   return validationResult;
 }
