@@ -18,6 +18,7 @@ export const AI_FEATURE_MODELS = {
   bestPracticesAnalysis: DEFAULT_MODEL,
   interviewer: DEFAULT_MODEL,
   patternRecommend: DEFAULT_MODEL,
+  evalGenerate: DEFAULT_MODEL,
 } as const;
 
 export type AIFeatureModelKey = keyof typeof AI_FEATURE_MODELS;
