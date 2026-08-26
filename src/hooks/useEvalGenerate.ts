@@ -60,11 +60,14 @@ export function useEvalGenerate() {
       setCandidates([]);
 
       const prompts = getActivePrompts('evalGenerate');
+      // Replacer *functions* — blueprint text is user content and may contain
+      // `$&`, `$\``, or `$'`, which String.replace treats as special patterns
+      // in a string replacement and would silently corrupt the prompt.
       const userPrompt = prompts.userPromptTemplate
-        .replace('{{EVAL_PRACTICES}}', BUILT_IN_EVAL_PRACTICES)
-        .replace('{{BLUEPRINT_METADATA}}', serializeBlueprintMetadata(metadata))
-        .replace('{{BLUEPRINT_TEXT}}', serializeBlueprintForAnalysis(nodes, edges))
-        .replace('{{EXISTING_EVALS}}', formatExistingEvals(existingEvals));
+        .replace('{{EVAL_PRACTICES}}', () => BUILT_IN_EVAL_PRACTICES)
+        .replace('{{BLUEPRINT_METADATA}}', () => serializeBlueprintMetadata(metadata))
+        .replace('{{BLUEPRINT_TEXT}}', () => serializeBlueprintForAnalysis(nodes, edges))
+        .replace('{{EXISTING_EVALS}}', () => formatExistingEvals(existingEvals));
 
       const controller = new AbortController();
       controllerRef.current = controller;

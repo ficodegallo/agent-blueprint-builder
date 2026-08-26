@@ -252,6 +252,16 @@ describe('EvalsPanel', () => {
     expect(screen.queryByText('Traj eval')).not.toBeInTheDocument();
   });
 
+  it('shows a filter message, not the empty state, when filters exclude everything', () => {
+    useEvalsStore.getState().setItems([evalItem({ id: 'a', linkedNodeId: 'n1' })]);
+    renderPanel();
+
+    fireEvent.change(screen.getByLabelText('Filter by scope'), { target: { value: 'workflow' } });
+
+    expect(screen.queryByText('No evals yet')).not.toBeInTheDocument();
+    expect(screen.getByText('No evals match the current filters.')).toBeInTheDocument();
+  });
+
   it('deletes an accepted eval', () => {
     useEvalsStore.getState().setItems([evalItem()]);
     renderPanel();

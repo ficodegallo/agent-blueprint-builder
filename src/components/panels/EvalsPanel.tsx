@@ -255,7 +255,7 @@ export function EvalsPanel() {
         )}
 
         {/* Accepted evals */}
-        {visibleList.length === 0 && proposals.length === 0 ? (
+        {items.length === 0 ? (
           <EmptyState errorCount={validation.errors.length} nodeCount={nodes.length} />
         ) : (
           visibleList.length > 0 && (
@@ -286,9 +286,9 @@ export function EvalsPanel() {
           )
         )}
 
-        {visibleList.length === 0 && proposals.length > 0 && accepted.length > 0 && (
+        {items.length > 0 && visibleList.length === 0 && (
           <p className="text-center text-gray-400 text-sm py-4">
-            No accepted evals match the current filters.
+            No evals match the current filters.
           </p>
         )}
       </div>

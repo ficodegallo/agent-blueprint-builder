@@ -196,6 +196,36 @@ describe('useEvalGenerate', () => {
     expect(prompt).toContain('Existing outcome check');
   });
 
+  it("does not corrupt the prompt when node text contains $& or $' patterns", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(apiResponse(VALID_CANDIDATES));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const trickyNodes: AppNode[] = [
+      {
+        id: 'n1',
+        type: 'work',
+        position: { x: 0, y: 0 },
+        data: {
+          nodeType: 'work',
+          name: "Payout Agent",
+          workerType: 'agent',
+          goal: "Refund $& and log $' plus $` for audit",
+        },
+      } as AppNode,
+    ];
+
+    const { result } = renderHook(() => useEvalGenerate());
+
+    await act(async () => {
+      await result.current.generateEvals(trickyNodes, [], { title: 'Payouts' }, []);
+    });
+
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body as string);
+    const prompt = body.messages[0].content as string;
+
+    expect(prompt).toContain("Refund $& and log $' plus $` for audit");
+  });
+
   it('uses custom prompts when they are saved', async () => {
     saveCustomPrompts('evalGenerate', {
       systemPrompt: 'CUSTOM SYSTEM',
