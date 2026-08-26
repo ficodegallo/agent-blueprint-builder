@@ -25,6 +25,7 @@ export interface BlueprintDoc {
   edges: { id?: string; source: string; target: string }[];
   comments: unknown[];
   parkingLot: unknown[];
+  evals: unknown[];
 }
 
 export interface BlueprintSummary {
@@ -123,6 +124,7 @@ export function blueprintToRow(bp: BlueprintDoc): Record<string, unknown> {
     edges: JSON.stringify(bp.edges || []),
     comments: JSON.stringify(bp.comments || []),
     parking_lot: JSON.stringify(bp.parkingLot || []),
+    evals: JSON.stringify(bp.evals || []),
   };
 }
 
@@ -147,6 +149,7 @@ export function rowToBlueprint(row: Row): BlueprintDoc {
     edges: (row.edges as BlueprintDoc['edges']) || [],
     comments: (row.comments as unknown[]) || [],
     parkingLot: (row.parking_lot as unknown[]) || [],
+    evals: (row.evals as unknown[]) || [],
   };
 }
 
@@ -171,8 +174,8 @@ function toIso(value: unknown): string | null {
 
 // ── Queries ──────────────────────────────────────────────────────────
 
-const COLUMNS =
-  'id, title, description, client_name, project_name, impacted_audiences, business_benefits, client_contacts, created_by, last_modified_by, last_modified_date, version, status, change_log, orchestration_pattern, nodes, edges, comments, parking_lot';
+export const COLUMNS =
+  'id, title, description, client_name, project_name, impacted_audiences, business_benefits, client_contacts, created_by, last_modified_by, last_modified_date, version, status, change_log, orchestration_pattern, nodes, edges, comments, parking_lot, evals';
 
 export async function listBlueprints(db: Queryable, full: boolean): Promise<BlueprintDoc[] | BlueprintSummary[]> {
   const result = await db.query(

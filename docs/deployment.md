@@ -40,7 +40,7 @@ From this repo:
 DATABASE_URL="postgresql://...from-railway..." npm run db:migrate
 ```
 
-Expected output: `Applying 001_init.sql...`, `Applying 002_orchestration_pattern.sql...`, then `Applied N migration(s).` Re-running prints `Up to date` — the runner is idempotent. Migration `002` adds the nullable `orchestration_pattern` column; existing rows are treated as "freeform".
+Expected output: `Applying 001_init.sql...`, `Applying 002_orchestration_pattern.sql...`, `Applying 003_evals.sql...`, then `Applied N migration(s).` Re-running prints `Up to date` — the runner is idempotent. Migration `002` adds the nullable `orchestration_pattern` column; existing rows are treated as "freeform". Migration `003` adds the `evals` JSONB column (defaults to `[]`) — apply it **before** deploying a client that writes evals, or those upserts fail on an unknown column.
 
 ## 3. Deploy to Vercel
 
@@ -83,4 +83,4 @@ vercel --prod
 - **Concurrency:** last write wins. Two people editing the same blueprint simultaneously will overwrite each other; the revisions table (last 20 saves) makes this recoverable by hand.
 - **Revisions:** stored server-side per save; no UI yet. Inspect via Railway's data browser: `select saved_at from blueprint_revisions where blueprint_id = '...' order by saved_at desc;`
 - **Local dev:** unchanged — `npm run dev` runs offline (localStorage only). To develop against the hosted API, set `VITE_API_BASE_URL=https://<your-app>.vercel.app/api` in `.env.local`.
-- **Schema changes:** add `db/migrations/002_*.sql` and re-run `npm run db:migrate`.
+- **Schema changes:** add the next numbered `db/migrations/NNN_*.sql` and re-run `npm run db:migrate`.
