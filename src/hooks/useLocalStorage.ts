@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { STORAGE_KEYS, getBlueprintStorageKey } from '../constants';
 import type { Blueprint, SerializedNode } from '../types';
-import { useBlueprintStore, useNodesStore, useEdgesStore, useCommentsStore, useParkingLotStore } from '../store';
+import { useBlueprintStore, useNodesStore, useEdgesStore, useCommentsStore, useParkingLotStore, useEvalsStore } from '../store';
 import type { AppNode } from '../store/nodesStore';
 
 interface SavedBlueprintSummary {
@@ -56,6 +56,7 @@ export function useLocalStorage() {
   const edgesStore = useEdgesStore();
   const commentsStore = useCommentsStore();
   const parkingLotStore = useParkingLotStore();
+  const evalsStore = useEvalsStore();
 
   // Get the current blueprint as a single object
   const getCurrentBlueprint = useCallback((): Blueprint => {
@@ -78,8 +79,9 @@ export function useLocalStorage() {
       edges: edgesStore.edges,
       comments: commentsStore.comments,
       parkingLot: parkingLotStore.items,
+      evals: evalsStore.items,
     };
-  }, [blueprintStore, nodesStore.nodes, edgesStore.edges, commentsStore.comments, parkingLotStore.items]);
+  }, [blueprintStore, nodesStore.nodes, edgesStore.edges, commentsStore.comments, parkingLotStore.items, evalsStore.items]);
 
   // Save current blueprint to localStorage
   const saveCurrentBlueprint = useCallback(() => {
@@ -127,7 +129,8 @@ export function useLocalStorage() {
     edgesStore.setEdges(blueprint.edges);
     commentsStore.setComments(blueprint.comments);
     parkingLotStore.setItems(blueprint.parkingLot || []);
-  }, [blueprintStore, nodesStore, edgesStore, commentsStore, parkingLotStore]);
+    evalsStore.setItems(blueprint.evals || []);
+  }, [blueprintStore, nodesStore, edgesStore, commentsStore, parkingLotStore, evalsStore]);
 
   // Save blueprint with a name (for saved blueprints list)
   const saveNamedBlueprint = useCallback((name?: string) => {
@@ -206,7 +209,8 @@ export function useLocalStorage() {
     edgesStore.reset();
     commentsStore.reset();
     parkingLotStore.reset();
-  }, [blueprintStore, nodesStore, edgesStore, commentsStore, parkingLotStore]);
+    evalsStore.reset();
+  }, [blueprintStore, nodesStore, edgesStore, commentsStore, parkingLotStore, evalsStore]);
 
   return {
     getCurrentBlueprint,

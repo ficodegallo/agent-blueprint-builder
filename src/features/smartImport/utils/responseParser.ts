@@ -175,6 +175,7 @@ function convertToBlueprint(response: ClaudeResponse): Blueprint {
     edges,
     comments: [],
     parkingLot: [],
+    evals: [],
   };
 }
 

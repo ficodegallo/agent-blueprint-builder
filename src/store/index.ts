@@ -14,3 +14,10 @@ export {
   selectUnresolvedParkingLotCount,
   selectUnresolvedParkingLotCountForNode,
 } from './parkingLotStore';
+export {
+  useEvalsStore,
+  selectAcceptedEvalCount,
+  selectProposedEvalCount,
+  selectActiveEvalCount,
+  selectEvalCountForNode,
+} from './evalsStore';

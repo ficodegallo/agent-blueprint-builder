@@ -34,5 +34,6 @@ export function createBlueprintForPattern(patternId: OrchestrationPatternId | nu
     edges: scaffold.edges,
     comments: [],
     parkingLot: [],
+    evals: [],
   };
 }

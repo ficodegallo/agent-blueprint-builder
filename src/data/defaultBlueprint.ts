@@ -21,6 +21,7 @@ export function createDefaultBlueprint(): Blueprint {
     edges: [],
     comments: [],
     parkingLot: [],
+    evals: [],
   };
 }
 
