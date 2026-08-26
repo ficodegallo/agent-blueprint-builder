@@ -1,7 +1,7 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useState } from 'react';
-import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList, MessageCircleQuestion, Settings2 } from 'lucide-react';
-import { useBlueprintStore, useUIStore, useParkingLotStore, selectUnresolvedParkingLotCount } from '../../store';
+import { Save, Download, Upload, FileText, ArrowLeft, Boxes, Sparkles, ClipboardList, ClipboardCheck, MessageCircleQuestion, Settings2 } from 'lucide-react';
+import { useBlueprintStore, useUIStore, useParkingLotStore, selectUnresolvedParkingLotCount, useEvalsStore, selectActiveEvalCount } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 import type { SyncStatus } from '../../services/blueprintStorage';
 import { NodeSearch } from './NodeSearch';
@@ -28,6 +28,8 @@ export function Header({ showBackButton = false }: HeaderProps) {
   const toggleParkingLot = useUIStore((state) => state.toggleParkingLot);
   const toggleInterviewer = useUIStore((state) => state.toggleInterviewer);
   const unresolvedCount = useParkingLotStore(selectUnresolvedParkingLotCount);
+  const toggleEvals = useUIStore((state) => state.toggleEvals);
+  const evalCount = useEvalsStore(selectActiveEvalCount);
 
   const syncStatus = useBlueprintsLibraryStore((state) => state.syncStatus);
   const retrySyncPending = useBlueprintsLibraryStore((state) => state.retrySyncPending);
@@ -128,6 +130,18 @@ export function Header({ showBackButton = false }: HeaderProps) {
           {unresolvedCount > 0 && (
             <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 bg-amber-500 text-white text-xs font-bold rounded-full">
               {unresolvedCount}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={toggleEvals}
+          className="relative flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+        >
+          <ClipboardCheck className="w-4 h-4" />
+          Evals
+          {evalCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center w-5 h-5 bg-blue-500 text-white text-xs font-bold rounded-full">
+              {evalCount}
             </span>
           )}
         </button>

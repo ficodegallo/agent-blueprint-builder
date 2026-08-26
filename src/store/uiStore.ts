@@ -9,6 +9,7 @@ export type DialogType =
   | 'apiKeySettings'
   | 'aiPromptAdmin'
   | 'parkingLotItem'
+  | 'evalItem'
   | null;
 
 interface UIState {
@@ -25,10 +26,13 @@ interface UIState {
   isParkingLotOpen: boolean;
   parkingLotNodeFilter: string | null;
   isInterviewerOpen: boolean;
+  isEvalsOpen: boolean;
+  evalsNodeFilter: string | null;
 
   // Dialogs
   activeDialog: DialogType;
   editingParkingLotItemId: string | null;
+  editingEvalItemId: string | null;
 
   // Actions
   selectNode: (id: string | null) => void;
@@ -45,6 +49,9 @@ interface UIState {
   openParkingLotForNode: (nodeId: string) => void;
   toggleInterviewer: () => void;
   closeInterviewer: () => void;
+  toggleEvals: () => void;
+  closeEvals: () => void;
+  openEvalsForNode: (nodeId: string) => void;
 
   setDetailPanelOpen: (open: boolean) => void;
   setTemplatePanelOpen: (open: boolean) => void;
@@ -54,6 +61,7 @@ interface UIState {
   openDialog: (dialog: UIState['activeDialog']) => void;
   closeDialog: () => void;
   openParkingLotItemDialog: (itemId?: string | null) => void;
+  openEvalItemDialog: (itemId?: string | null) => void;
 }
 
 export const useUIStore = create<UIState>((set) => ({
@@ -68,8 +76,11 @@ export const useUIStore = create<UIState>((set) => ({
   isParkingLotOpen: false,
   parkingLotNodeFilter: null,
   isInterviewerOpen: false,
+  isEvalsOpen: false,
+  evalsNodeFilter: null,
   activeDialog: null,
   editingParkingLotItemId: null,
+  editingEvalItemId: null,
 
   // Selection actions
   selectNode: (id) =>
@@ -129,6 +140,16 @@ export const useUIStore = create<UIState>((set) => ({
 
   closeInterviewer: () => set({ isInterviewerOpen: false }),
 
+  toggleEvals: () =>
+    set((state) => ({
+      isEvalsOpen: !state.isEvalsOpen,
+      evalsNodeFilter: state.isEvalsOpen ? null : state.evalsNodeFilter,
+    })),
+
+  closeEvals: () => set({ isEvalsOpen: false, evalsNodeFilter: null }),
+
+  openEvalsForNode: (nodeId) => set({ isEvalsOpen: true, evalsNodeFilter: nodeId }),
+
   // Panel set actions
   setDetailPanelOpen: (open) => set({ isDetailPanelOpen: open }),
   setTemplatePanelOpen: (open) => set({ isTemplatePanelOpen: open }),
@@ -137,7 +158,10 @@ export const useUIStore = create<UIState>((set) => ({
 
   // Dialog actions
   openDialog: (dialog) => set({ activeDialog: dialog }),
-  closeDialog: () => set({ activeDialog: null, editingParkingLotItemId: null }),
+  closeDialog: () =>
+    set({ activeDialog: null, editingParkingLotItemId: null, editingEvalItemId: null }),
   openParkingLotItemDialog: (itemId = null) =>
     set({ activeDialog: 'parkingLotItem', editingParkingLotItemId: itemId ?? null }),
+  openEvalItemDialog: (itemId = null) =>
+    set({ activeDialog: 'evalItem', editingEvalItemId: itemId ?? null }),
 }));

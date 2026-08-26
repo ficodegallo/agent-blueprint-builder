@@ -17,6 +17,8 @@ import { SmartImportDialog, ApiKeySettings } from '../../features/smartImport';
 import { InterviewerPanel } from '../../features/interviewer';
 import { ParkingLotPanel } from '../panels/ParkingLotPanel';
 import { ParkingLotItemDialog } from '../dialogs/ParkingLotItemDialog';
+import { EvalsPanel } from '../panels/EvalsPanel';
+import { EvalItemDialog } from '../dialogs/EvalItemDialog';
 import { useUIStore, useBlueprintStore, useNodesStore, useEdgesStore, useCommentsStore, useParkingLotStore, useEvalsStore } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 
@@ -182,6 +184,8 @@ function BlueprintEditorContent() {
       <ParkingLotPanel />
       <InterviewerPanel />
       <ParkingLotItemDialog />
+      <EvalsPanel />
+      <EvalItemDialog />
     </>
   );
 }
