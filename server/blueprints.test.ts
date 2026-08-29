@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi } from 'vitest';
 import {
+  COLUMNS,
   validateBlueprint,
   blueprintToRow,
   rowToBlueprint,
@@ -43,6 +44,7 @@ function makeBlueprint(overrides: Partial<BlueprintDoc> = {}): BlueprintDoc {
     ],
     comments: [],
     parkingLot: [],
+    evals: [],
     ...overrides,
   };
 }
@@ -92,13 +94,24 @@ describe('validateBlueprint', () => {
   });
 });
 
+describe('evals validation', () => {
+  it('accepts a blueprint with evals and one without', () => {
+    const withEvals = makeBlueprint({ evals: [{ id: 'x', title: 'An eval' }] });
+    expect(validateBlueprint(withEvals).ok).toBe(true);
+
+    const withoutEvals = makeBlueprint();
+    delete (withoutEvals as Partial<BlueprintDoc>).evals;
+    expect(validateBlueprint(withoutEvals).ok).toBe(true);
+  });
+});
+
 describe('row mapping', () => {
   it('round-trips a full blueprint through row and back', () => {
     const bp = makeBlueprint();
     const row = blueprintToRow(bp);
     // Postgres JSONB columns come back as parsed objects
     const dbRow: Record<string, unknown> = { ...row };
-    for (const key of ['impacted_audiences', 'business_benefits', 'client_contacts', 'change_log', 'nodes', 'edges', 'comments', 'parking_lot']) {
+    for (const key of ['impacted_audiences', 'business_benefits', 'client_contacts', 'change_log', 'nodes', 'edges', 'comments', 'parking_lot', 'evals']) {
       dbRow[key] = JSON.parse(row[key] as string);
     }
     expect(rowToBlueprint(dbRow)).toEqual(bp);
@@ -129,6 +142,51 @@ describe('row mapping', () => {
     expect(row.orchestration_pattern).toBeNull();
     const dbRow: Record<string, unknown> = { ...row, orchestration_pattern: null, nodes: [], edges: [] };
     expect(rowToBlueprint(dbRow).orchestrationPattern).toBeUndefined();
+  });
+
+  it('round-trips a populated evals array', () => {
+    const evals = [
+      {
+        id: 'eval-1',
+        title: 'Refund routing accuracy',
+        dimension: 'trajectory',
+        graderType: 'deterministic',
+        question: 'Did refunds over $500 reach the approval gate?',
+        passCriteria: 'All over-threshold refunds route to approval',
+        dataNeeded: '30 labeled refund requests',
+        failureMode: 'Router auto-approves high-value refunds',
+        linkedNodeId: null,
+        priority: 'high',
+        status: 'accepted',
+        origin: 'ai',
+        edited: false,
+        createdAt: '2026-08-26T00:00:00.000Z',
+        updatedAt: '2026-08-26T00:00:00.000Z',
+      },
+    ];
+    const bp = makeBlueprint({ evals });
+    const row = blueprintToRow(bp);
+    expect(JSON.parse(row.evals as string)).toEqual(evals);
+
+    const dbRow: Record<string, unknown> = { ...row, evals, nodes: [], edges: [] };
+    expect(rowToBlueprint(dbRow).evals).toEqual(evals);
+  });
+
+  it('serializes an absent evals array as an empty JSON array', () => {
+    const bp = makeBlueprint();
+    delete (bp as Partial<BlueprintDoc>).evals;
+    expect(blueprintToRow(bp).evals).toBe('[]');
+  });
+
+  it('maps a NULL evals column (pre-migration row) back to an empty array', () => {
+    const bp = makeBlueprint();
+    const row = blueprintToRow(bp);
+    const dbRow: Record<string, unknown> = { ...row, evals: null, nodes: [], edges: [] };
+    expect(rowToBlueprint(dbRow).evals).toEqual([]);
+  });
+
+  it('COLUMNS selects the evals column so reads do not silently drop it', () => {
+    expect(COLUMNS.split(', ')).toContain('evals');
   });
 
   it('converts Date values from pg to ISO strings', () => {

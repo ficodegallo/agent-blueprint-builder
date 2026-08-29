@@ -40,6 +40,7 @@ export interface Blueprint extends BlueprintMetadata {
   edges: import('./edges').BlueprintEdge[];
   comments: import('./comments').Comment[];
   parkingLot: import('./parkingLot').ParkingLotItem[];
+  evals: import('./evals').EvalItem[];
 }
 
 export interface BlueprintExport {

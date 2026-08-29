@@ -12,7 +12,8 @@ export type AIFeatureKey =
   | 'taskAutoOrder'
   | 'apiDiscovery'
   | 'interviewer'
-  | 'patternRecommend';
+  | 'patternRecommend'
+  | 'evalGenerate';
 
 export interface AIFeaturePrompts {
   systemPrompt: string;
@@ -102,6 +103,18 @@ export function getFeatureConfigs(): AIFeatureConfig[] {
         { token: '{{MODE_INSTRUCTIONS}}', description: 'Mode-specific instructions (Discovery or Grill)' },
         { token: '{{PROCESS_CONTEXT}}', description: 'What the user said they want to work on' },
         { token: '{{BLUEPRINT_STATE}}', description: 'Compact serialization of the current canvas' },
+      ],
+    },
+    {
+      key: 'evalGenerate',
+      label: 'Eval Generate',
+      description:
+        'Proposes the evals that would tell you whether the whole workflow is working.',
+      placeholders: [
+        { token: '{{EVAL_PRACTICES}}', description: 'Built-in eval-design rulebook' },
+        { token: '{{BLUEPRINT_METADATA}}', description: 'Blueprint title, description, pattern, status, audiences, benefits' },
+        { token: '{{BLUEPRINT_TEXT}}', description: 'Serialized description of every node and connection' },
+        { token: '{{EXISTING_EVALS}}', description: 'Titles of evals the blueprint already has, so they are not repeated' },
       ],
     },
     {
@@ -570,6 +583,50 @@ Return ONLY the JSON array, no other text.`,
 {{BLUEPRINT_TEXT}}
 
 Analyze this blueprint against the best practices above and return a JSON array of violations.`,
+  },
+  evalGenerate: {
+    systemPrompt: `You are an evaluation engineer. You design the eval suite for an agentic workflow that is about to be built, so the team can tell whether it is actually working in production.
+
+You will be given eval-design rules, a blueprint's metadata, a full description of every node and connection, and the evals the blueprint already has.
+
+Return ONLY a JSON array of eval objects. Each object has:
+- "title": short name for the eval (under 60 characters)
+- "dimension": one of "outcome", "trajectory", "quality", "safety", "oversight", "efficiency"
+- "graderType": one of "deterministic", "llm-judge", "human-review", "hybrid"
+- "question": the single binary pass/fail question this eval answers, phrased as a question
+- "passCriteria": what counts as a pass, checkable by someone who was not in the room
+- "dataNeeded": the test cases, traces or fixtures required, including roughly how many and what must be labeled
+- "failureMode": the concrete failure in THIS workflow that the eval protects against
+- "linkedNodeId": the node ID this eval targets, or null for a workflow-level eval
+- "priority": "high", "medium" or "low"
+- "confidence": "high", "medium" or "low" — how confident you are this eval matters for this workflow
+- "notes": optional short note, e.g. an assumption you had to make
+
+Use only node IDs that appear in the blueprint description. If an eval is about the workflow as a whole, use null.
+
+Return ONLY the JSON array, no other text.`,
+    userPromptTemplate: `## Eval design rules
+{{EVAL_PRACTICES}}
+
+## Blueprint metadata
+{{BLUEPRINT_METADATA}}
+
+## Blueprint
+{{BLUEPRINT_TEXT}}
+
+## Evals this blueprint already has
+{{EXISTING_EVALS}}
+
+Propose 5-6 evals for this workflow, following the rules above.
+
+Requirements for this set:
+- At least two evals must be workflow-level (linkedNodeId = null).
+- Span at least three different dimensions.
+- Prefer "deterministic" graders wherever the check is mechanically verifiable.
+- Ground every eval in something actually on this canvas — a specific node, route, guardrail, loop bound, human gate, or the stated goal.
+- Do not repeat or restate anything in "Evals this blueprint already has".
+
+Return the JSON array.`,
   },
 };
 

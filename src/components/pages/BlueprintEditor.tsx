@@ -17,7 +17,9 @@ import { SmartImportDialog, ApiKeySettings } from '../../features/smartImport';
 import { InterviewerPanel } from '../../features/interviewer';
 import { ParkingLotPanel } from '../panels/ParkingLotPanel';
 import { ParkingLotItemDialog } from '../dialogs/ParkingLotItemDialog';
-import { useUIStore, useBlueprintStore, useNodesStore, useEdgesStore, useCommentsStore, useParkingLotStore } from '../../store';
+import { EvalsPanel } from '../panels/EvalsPanel';
+import { EvalItemDialog } from '../dialogs/EvalItemDialog';
+import { useUIStore, useBlueprintStore, useNodesStore, useEdgesStore, useCommentsStore, useParkingLotStore, useEvalsStore } from '../../store';
 import { useBlueprintsLibraryStore } from '../../store/blueprintsLibraryStore';
 
 function BlueprintEditorContent() {
@@ -55,6 +57,8 @@ function BlueprintEditorContent() {
   const setComments = useCommentsStore((state) => state.setComments);
   const parkingLotItems = useParkingLotStore((state) => state.items);
   const setParkingLotItems = useParkingLotStore((state) => state.setItems);
+  const evalItems = useEvalsStore((state) => state.items);
+  const setEvalItems = useEvalsStore((state) => state.setItems);
 
   // Load blueprint on mount
   useEffect(() => {
@@ -99,6 +103,7 @@ function BlueprintEditorContent() {
     setEdges(blueprint.edges);
     setComments(blueprint.comments);
     setParkingLotItems(blueprint.parkingLot || []);
+    setEvalItems(blueprint.evals || []);
 
     // Mark as initialized after a short delay to avoid immediate save
     setTimeout(() => {
@@ -124,6 +129,7 @@ function BlueprintEditorContent() {
     const currentEdges = useEdgesStore.getState().edges;
     const currentComments = useCommentsStore.getState().comments;
     const currentParkingLot = useParkingLotStore.getState().items;
+    const currentEvals = useEvalsStore.getState().items;
     const blueprintState = useBlueprintStore.getState();
 
     updateBlueprint(blueprintId, {
@@ -146,6 +152,7 @@ function BlueprintEditorContent() {
       edges: currentEdges,
       comments: currentComments,
       parkingLot: currentParkingLot,
+      evals: currentEvals,
     });
   }, [blueprintId, updateBlueprint]);
 
@@ -157,7 +164,7 @@ function BlueprintEditorContent() {
     return () => clearTimeout(saveTimeout);
   }, [blueprintId, saveToLibrary, id, title, description, impactedAudiences, businessBenefits,
       clientContacts, createdBy, lastModifiedBy, lastModifiedDate, version, status, changeLog,
-      nodes, edges, comments, parkingLotItems]);
+      nodes, edges, comments, parkingLotItems, evalItems]);
 
   return (
     <>
@@ -177,6 +184,8 @@ function BlueprintEditorContent() {
       <ParkingLotPanel />
       <InterviewerPanel />
       <ParkingLotItemDialog />
+      <EvalsPanel />
+      <EvalItemDialog />
     </>
   );
 }

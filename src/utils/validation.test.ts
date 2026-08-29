@@ -525,3 +525,76 @@ describe('W011: Pattern / graph mismatch', () => {
     expect(result.warnings.some((w) => w.code === 'W011')).toBe(true);
   });
 });
+
+describe('W012 — no evals on a review-ready blueprint', () => {
+  const chain = () => ({
+    nodes: [createTriggerNode('t1'), createWorkNode('w1'), createEndNode('e1')],
+    edges: connectChain(['t1', 'w1', 'e1']),
+  });
+
+  it('does not warn while the blueprint is a Draft', () => {
+    const { nodes, edges } = chain();
+    const result = validateBlueprint(nodes, edges, undefined, undefined, {
+      status: 'Draft',
+      evalCount: 0,
+    });
+    expect(result.warnings.filter((w) => w.code === 'W012')).toHaveLength(0);
+  });
+
+  it('warns once when the blueprint is In Review with no evals', () => {
+    const { nodes, edges } = chain();
+    const result = validateBlueprint(nodes, edges, undefined, undefined, {
+      status: 'In Review',
+      evalCount: 0,
+    });
+    const issues = result.warnings.filter((w) => w.code === 'W012');
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe('warning');
+    expect(result.all.some((i) => i.code === 'W012')).toBe(true);
+    expect(result.errors.some((e) => e.code === 'W012')).toBe(false);
+  });
+
+  it('warns when the blueprint is Approved with no evals', () => {
+    const { nodes, edges } = chain();
+    const result = validateBlueprint(nodes, edges, undefined, undefined, {
+      status: 'Approved',
+      evalCount: 0,
+    });
+    expect(result.warnings.filter((w) => w.code === 'W012')).toHaveLength(1);
+  });
+
+  it('does not warn below the node threshold', () => {
+    const nodes = [createTriggerNode('t1'), createEndNode('e1')];
+    const edges = connectChain(['t1', 'e1']);
+    const result = validateBlueprint(nodes, edges, undefined, undefined, {
+      status: 'In Review',
+      evalCount: 0,
+    });
+    expect(result.warnings.filter((w) => w.code === 'W012')).toHaveLength(0);
+  });
+
+  it('does not warn once at least one eval exists', () => {
+    const { nodes, edges } = chain();
+    const result = validateBlueprint(nodes, edges, undefined, undefined, {
+      status: 'In Review',
+      evalCount: 1,
+    });
+    expect(result.warnings.filter((w) => w.code === 'W012')).toHaveLength(0);
+  });
+
+  it('never warns when the options argument is omitted', () => {
+    const { nodes, edges } = chain();
+    const result = validateBlueprint(nodes, edges);
+    expect(result.warnings.filter((w) => w.code === 'W012')).toHaveLength(0);
+  });
+
+  it('does not make the blueprint invalid', () => {
+    const { nodes, edges } = chain();
+    const result = validateBlueprint(nodes, edges, undefined, undefined, {
+      status: 'Approved',
+      evalCount: 0,
+    });
+    expect(result.warnings.some((w) => w.code === 'W012')).toBe(true);
+    expect(result.isValid).toBe(true);
+  });
+});

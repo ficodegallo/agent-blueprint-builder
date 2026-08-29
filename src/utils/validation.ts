@@ -1,5 +1,5 @@
 import type { AppNode } from '../store/nodesStore';
-import type { BlueprintEdge } from '../types';
+import type { BlueprintEdge, Status } from '../types';
 import type { OrchestrationPatternId } from '../features/patterns/types';
 
 export type ValidationSeverity = 'error' | 'warning';
@@ -44,6 +44,7 @@ const WARNING_CODES = {
   SPLIT_WITHOUT_JOIN: 'W009',
   NO_ORCHESTRATOR_WORKERS: 'W010',
   PATTERN_MISMATCH: 'W011',
+  NO_EVALS: 'W012',
 } as const;
 
 // The node type each non-trivial pattern expects on the canvas. Absence is an
@@ -56,11 +57,19 @@ const PATTERN_EXPECTED_NODE: Partial<Record<OrchestrationPatternId, { nodeType: 
   agent: { nodeType: 'agentLoop', label: 'an Agent Loop node' },
 };
 
+/** Blueprint-level context beyond the graph itself. */
+export interface ValidationOptions {
+  /** Non-dismissed evals on the blueprint. */
+  evalCount?: number;
+  status?: Status;
+}
+
 export function validateBlueprint(
   nodes: AppNode[],
   edges: BlueprintEdge[],
   existingBlueprintIds?: Set<string>,
-  orchestrationPattern?: OrchestrationPatternId
+  orchestrationPattern?: OrchestrationPatternId,
+  options?: ValidationOptions
 ): ValidationResult {
   const errors: ValidationIssue[] = [];
   const warnings: ValidationIssue[] = [];
@@ -307,6 +316,24 @@ export function validateBlueprint(
       severity: 'warning',
       code: WARNING_CODES.PATTERN_MISMATCH,
       message: `This blueprint's pattern expects ${expected.label}, but the canvas has none`,
+    });
+  }
+
+  // Blueprint-level: a blueprint the owner considers real should say how anyone
+  // would know the built workflow works. Gated on status so a fresh canvas is
+  // never nagged; advisory only — evals never block export.
+  const EVAL_PROMPT_STATUSES: Status[] = ['In Review', 'Approved'];
+  if (
+    options?.status &&
+    EVAL_PROMPT_STATUSES.includes(options.status) &&
+    nodes.length >= 3 &&
+    (options.evalCount ?? 0) === 0
+  ) {
+    warnings.push({
+      id: `${WARNING_CODES.NO_EVALS}-global`,
+      severity: 'warning',
+      code: WARNING_CODES.NO_EVALS,
+      message: `Blueprint is marked ${options.status} but has no evals defined — add evaluation criteria so the team can tell whether the built workflow is working`,
     });
   }
 

@@ -3,6 +3,7 @@ import { getApiKey } from '../features/smartImport/hooks/useClaudeApi';
 import { getBestPracticesText } from '../utils/bestPracticesStorage';
 import { BUILT_IN_BEST_PRACTICES } from '../data/defaultBestPractices';
 import { getActivePrompts } from '../utils/aiPromptStorage';
+import { serializeBlueprintForAnalysis } from '../utils/blueprintSerializer';
 import type { AppNode } from '../store/nodesStore';
 import type { BlueprintEdge } from '../types';
 import type { ValidationIssue } from '../utils/validation';
@@ -12,126 +13,6 @@ import { AI_FEATURE_MODELS, ANTHROPIC_API_URL as API_URL } from '../constants/ai
 const MODEL = AI_FEATURE_MODELS.bestPracticesAnalysis;
 const MAX_TOKENS = 4000;
 const TIMEOUT_MS = 60000;
-
-// Shared agent-spec fields present on work/orchestrator/agentLoop/evaluator nodes
-function serializeAgentSpec(d: Record<string, unknown>, lines: string[]): void {
-  const spec = d as {
-    description?: string;
-    skills?: string[];
-    tools?: string[];
-    autonomyLevel?: string;
-    guardrails?: string[];
-    successCriteria?: string[];
-    stopCondition?: string;
-    failureHandling?: string;
-    hitl?: { mode: string; reviewer: string; sla: string; samplingRate: string; escalationPath: string };
-  };
-  if (spec.description) lines.push(`  Agent description: ${spec.description}`);
-  if (spec.skills?.length) lines.push(`  Skills: ${spec.skills.join(', ')}`);
-  if (spec.tools?.length) lines.push(`  Tools: ${spec.tools.join(', ')}`);
-  if (spec.autonomyLevel) lines.push(`  Autonomy level: ${spec.autonomyLevel}`);
-  lines.push(`  Guardrails: ${spec.guardrails?.length ? spec.guardrails.join('; ') : 'none defined'}`);
-  lines.push(`  Success criteria: ${spec.successCriteria?.length ? spec.successCriteria.join('; ') : 'NOT DEFINED'}`);
-  if (spec.failureHandling) lines.push(`  Failure handling: ${spec.failureHandling}`);
-  if (spec.hitl && spec.hitl.mode !== 'none') {
-    const h = spec.hitl;
-    lines.push(
-      `  Human oversight: ${h.mode}${h.reviewer ? ` by ${h.reviewer}` : ''}${h.sla ? `, SLA ${h.sla}` : ''}${h.samplingRate ? `, sampling ${h.samplingRate}` : ''}${h.escalationPath ? `, escalation: ${h.escalationPath}` : ', NO ESCALATION PATH'}`
-    );
-  } else {
-    lines.push('  Human oversight: none (fully autonomous)');
-  }
-}
-
-function serializeBlueprintForAnalysis(nodes: AppNode[], edges: BlueprintEdge[]): string {
-  const lines: string[] = [];
-
-  lines.push(`Blueprint has ${nodes.length} nodes and ${edges.length} connections.\n`);
-
-  for (const node of nodes) {
-    const d = node.data;
-    lines.push(`Node [${node.id}] "${d.name}" (type: ${d.nodeType})`);
-
-    if (d.nodeType === 'work') {
-      lines.push(`  Worker type: ${d.workerType}`);
-      if (d.goal) lines.push(`  Goal: ${d.goal}`);
-      if (d.inputs?.length) lines.push(`  Inputs: ${d.inputs.map((i) => `${i.name}${i.required ? '*' : ''}`).join(', ')}`);
-      if (d.tasks?.length) lines.push(`  Tasks: ${d.tasks.join('; ')}`);
-      if (d.outputs?.length) lines.push(`  Outputs: ${d.outputs.map((o) => `${o.name}${o.required ? '*' : ''}`).join(', ')}`);
-      if (d.integrations?.length) {
-        const names = d.integrations.map((ig) => (typeof ig === 'string' ? ig : ig.name)).join(', ');
-        lines.push(`  Integrations: ${names}`);
-      }
-      serializeAgentSpec(d, lines);
-    } else if (d.nodeType === 'orchestrator') {
-      if (d.goal) lines.push(`  Goal: ${d.goal}`);
-      if (d.delegationStrategy) lines.push(`  Delegation strategy: ${d.delegationStrategy}`);
-      if (d.workers?.length) {
-        lines.push(`  Workers:`);
-        for (const w of d.workers) {
-          lines.push(`    - ${w.name}: ${w.description}${w.skills?.length ? ` (skills: ${w.skills.join(', ')})` : ''}`);
-        }
-      } else {
-        lines.push('  Workers: none defined');
-      }
-      if (d.synthesis) lines.push(`  Synthesis: ${d.synthesis}`);
-      lines.push(`  Termination condition: ${d.terminationCondition || 'NOT DEFINED'}`);
-      lines.push(`  Max iterations: ${d.maxIterations || 'NOT DEFINED'}`);
-      if (d.budget) lines.push(`  Budget: ${d.budget}`);
-      serializeAgentSpec(d, lines);
-    } else if (d.nodeType === 'agentLoop') {
-      if (d.goal) lines.push(`  Goal: ${d.goal}`);
-      lines.push(`  Stop condition: ${d.stopCondition || 'NOT DEFINED'}`);
-      lines.push(`  Max iterations: ${d.maxIterations || 'NOT DEFINED'}`);
-      if (d.memory) lines.push(`  Memory: ${d.memory}`);
-      if (d.integrations?.length) {
-        const names = d.integrations.map((ig) => (typeof ig === 'string' ? ig : ig.name)).join(', ');
-        lines.push(`  Integrations: ${names}`);
-      }
-      serializeAgentSpec(d, lines);
-    } else if (d.nodeType === 'router') {
-      if (d.description) lines.push(`  Description: ${d.description}`);
-      if (d.classifierInstructions) lines.push(`  Classifier instructions: ${d.classifierInstructions}`);
-      if (d.routes?.length) {
-        lines.push(`  Routes: ${d.routes.map((r) => `${r.label} (${r.description || 'no description'})`).join('; ')}`);
-      }
-      lines.push(`  Fallback route: ${d.fallbackRoute || 'NOT DEFINED'}`);
-    } else if (d.nodeType === 'parallel') {
-      lines.push(`  Mode: ${d.mode}`);
-      if (d.mode === 'split' && d.branches?.length) {
-        lines.push(`  Branches: ${d.branches.map((b) => b.label).join(', ')}`);
-      }
-      if (d.mode === 'join') lines.push(`  Join behavior: ${d.joinBehavior}`);
-    } else if (d.nodeType === 'evaluatorOptimizer') {
-      if (d.goal) lines.push(`  Goal: ${d.goal}`);
-      if (d.generatorDescription) lines.push(`  Generator: ${d.generatorDescription}`);
-      lines.push(`  Evaluator criteria: ${d.evaluatorCriteria?.length ? d.evaluatorCriteria.join('; ') : 'NOT DEFINED'}`);
-      lines.push(`  Pass condition: ${d.passCondition || 'NOT DEFINED'}`);
-      lines.push(`  Max iterations: ${d.maxIterations || 'NOT DEFINED'}`);
-      lines.push(`  On max iterations: ${d.onMaxIterations || 'NOT DEFINED'}`);
-      serializeAgentSpec(d, lines);
-    } else if (d.nodeType === 'trigger') {
-      lines.push(`  Trigger type: ${d.triggerType}`);
-      if (d.description) lines.push(`  Description: ${d.description}`);
-    } else if (d.nodeType === 'decision') {
-      if (d.description) lines.push(`  Description: ${d.description}`);
-      if (d.conditions?.length) lines.push(`  Branches: ${d.conditions.map((c) => c.label).join(', ')}`);
-    } else if (d.nodeType === 'end') {
-      if (d.outcome) lines.push(`  Outcome: ${d.outcome}`);
-    } else if (d.nodeType === 'workflow') {
-      if (d.workflowName) lines.push(`  Workflow: ${d.workflowName}`);
-    }
-    lines.push('');
-  }
-
-  lines.push('Connections:');
-  for (const edge of edges) {
-    const label = edge.label ? ` [${edge.label}]` : '';
-    lines.push(`  ${edge.source} -> ${edge.target}${label}`);
-  }
-
-  return lines.join('\n');
-}
 
 interface BPWarning {
   code: string;

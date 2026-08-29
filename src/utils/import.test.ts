@@ -54,6 +54,7 @@ function createValidBlueprint(): Blueprint {
     ],
     comments: [],
     parkingLot: [],
+    evals: [],
   };
 }
 
@@ -68,6 +69,47 @@ describe('parseImportedJSON', () => {
       expect(result.success).toBe(true);
       expect(result.blueprint).toBeDefined();
       expect(result.blueprint?.title).toBe('Test Blueprint');
+    });
+
+    it('should default evals to an empty array when the key is absent', () => {
+      const blueprint = createValidBlueprint();
+      const withoutEvals = { ...blueprint } as Partial<Blueprint>;
+      delete withoutEvals.evals;
+
+      const result = parseImportedJSON(JSON.stringify(withoutEvals));
+
+      expect(result.success).toBe(true);
+      expect(result.blueprint?.evals).toEqual([]);
+    });
+
+    it('should round-trip a populated evals array', () => {
+      const blueprint = createValidBlueprint();
+      blueprint.evals = [
+        {
+          id: 'eval-1',
+          title: 'Refund routing accuracy',
+          dimension: 'trajectory',
+          graderType: 'deterministic',
+          question: 'Did refunds over $500 reach the approval gate?',
+          passCriteria: 'All over-threshold refunds route to approval',
+          dataNeeded: '30 labeled refund requests',
+          failureMode: 'Router auto-approves high-value refunds',
+          linkedNodeId: 'node1',
+          priority: 'high',
+          status: 'accepted',
+          origin: 'ai',
+          aiConfidence: 'high',
+          aiNotes: 'Threshold inferred from the decision node label',
+          edited: true,
+          createdAt: '2026-08-26T00:00:00.000Z',
+          updatedAt: '2026-08-26T01:00:00.000Z',
+        },
+      ];
+
+      const result = parseImportedJSON(JSON.stringify(blueprint));
+
+      expect(result.success).toBe(true);
+      expect(result.blueprint?.evals).toEqual(blueprint.evals);
     });
 
     it('should parse valid BlueprintExport format', () => {

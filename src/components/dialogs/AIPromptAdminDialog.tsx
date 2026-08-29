@@ -9,6 +9,7 @@ import {
   RotateCcw,
   MessageCircleQuestion,
   Workflow,
+  ClipboardCheck,
 } from 'lucide-react';
 import {
   getFeatureConfigs,
@@ -34,6 +35,7 @@ const FEATURE_ICONS: Record<AIFeatureKey, typeof FileUp> = {
   bestPracticesAnalysis: BookOpen,
   interviewer: MessageCircleQuestion,
   patternRecommend: Workflow,
+  evalGenerate: ClipboardCheck,
 };
 
 export function AIPromptAdminDialog({ isOpen, onClose }: AIPromptAdminDialogProps) {

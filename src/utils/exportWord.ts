@@ -1367,13 +1367,13 @@ function buildIntegrationSpecs(
   return elements;
 }
 
-function buildAppendices(
+export function buildAppendices(
   _blueprint: Blueprint,
   orderedNodes: SerializedNode[]
 ): (Paragraph | Table)[] {
   const elements: (Paragraph | Table)[] = [];
 
-  elements.push(heading1('6. Appendices'));
+  elements.push(heading1('7. Appendices'));
 
   // A. Glossary
   elements.push(heading2('A. Glossary'));
@@ -1501,6 +1501,59 @@ function buildParkingLot(blueprint: Blueprint): (Paragraph | Table)[] {
   return elements;
 }
 
+export function buildEvaluationPlan(blueprint: Blueprint): (Paragraph | Table)[] {
+  const elements: (Paragraph | Table)[] = [];
+  // Dismissed proposals are refresh tombstones, not part of the plan.
+  const evals = (blueprint.evals || []).filter((e) => e.status !== 'dismissed');
+
+  elements.push(heading1('6. Evaluation Plan'));
+  elements.push(
+    bodyText(
+      'The checks that determine whether the built workflow is working. Each eval answers a single pass/fail question, names what counts as a pass, the test data it requires, and the failure mode it protects against.'
+    )
+  );
+
+  if (evals.length === 0) {
+    elements.push(bodyText('No evaluation criteria defined.'));
+    return elements;
+  }
+
+  const rows = evals.map((item) => {
+    const scope = item.linkedNodeId
+      ? blueprint.nodes.find((n) => n.id === item.linkedNodeId)?.data.name || item.linkedNodeId
+      : 'Blueprint Overall';
+    return makeRow(
+      { text: item.title, width: 16 },
+      { text: item.dimension, width: 10 },
+      { text: scope, width: 14 },
+      { text: item.graderType, width: 10 },
+      { text: item.passCriteria || '—', width: 18 },
+      { text: item.dataNeeded || '—', width: 16 },
+      { text: item.failureMode || '—', width: 16 }
+    );
+  });
+
+  elements.push(
+    new Table({
+      width: { size: 100, type: WidthType.PERCENTAGE },
+      rows: [
+        makeHeaderRow(
+          { text: 'Eval', width: 16 },
+          { text: 'Dimension', width: 10 },
+          { text: 'Scope', width: 14 },
+          { text: 'Grader', width: 10 },
+          { text: 'Pass Criteria', width: 18 },
+          { text: 'Data Needed', width: 16 },
+          { text: 'Failure Mode Addressed', width: 16 }
+        ),
+        ...rows,
+      ],
+    })
+  );
+
+  return elements;
+}
+
 // ── Main Export Function ─────────────────────────────────────────────────────
 
 export async function exportToWord(
@@ -1610,6 +1663,7 @@ export async function exportToWord(
           ...buildDetailedNodeSpecs(blueprint, orderedNodes),
           ...buildIntegrationSpecs(blueprint, orderedNodes),
           ...buildParkingLot(blueprint),
+          ...buildEvaluationPlan(blueprint),
           ...buildAppendices(blueprint, orderedNodes),
         ],
       },
